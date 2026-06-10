@@ -1,0 +1,78 @@
+{
+    "process": "gptq",
+    "layer": 0,
+    "module": "self_attn.k_proj",
+    "feat: in, out": "5120, 1024",
+    "dtype: size": "bf16: 10.3MB",
+    "loss": "0.0000020128",
+    "samples": "17024",
+    "damp": "0.05000",
+    "time": "2.418",
+    "fwd_time": "4.251",
+    "(v)ram": "cuda 3.17G, 1.96G"
+}
+{
+    "process": "gptq",
+    "layer": 0,
+    "module": "self_attn.v_proj",
+    "feat: in, out": "5120, 1024",
+    "dtype: size": "bf16: 10.3MB",
+    "loss": "rtn fallback",
+    "samples": "17024",
+    "damp": "1.00000",
+    "time": "9.697",
+    "fwd_time": "4.251",
+    "(v)ram": "cuda 3.17G, 1.96G"
+}
+{
+    "process": "gptq",
+    "layer": 0,
+    "module": "self_attn.q_proj",
+    "feat: in, out": "5120, 4096",
+    "dtype: size": "bf16: 41.3MB",
+    "loss": "0.0002595059",
+    "samples": "17024",
+    "damp": "0.05000",
+    "time": "11.149",
+    "fwd_time": "4.251",
+    "(v)ram": "cuda 3.17G, 1.96G"
+}
+{
+    "process": "gptq",
+    "layer": 0,
+    "module": "self_attn.o_proj",
+    "feat: in, out": "4096, 5120",
+    "dtype: size": "bf16: 41.3MB",
+    "loss": "rtn fallback",
+    "samples": "17024",
+    "damp": "1.00000",
+    "time": "3.088",
+    "fwd_time": "0.694",
+    "(v)ram": "cuda 27.95G, 2.06G"
+}
+{
+    "process": "gptq",
+    "layer": 0,
+    "module": "mlp.gate_proj",
+    "feat: in, out": "5120, 32768",
+    "dtype: size": "bf16: 330.0MB",
+    "loss": "rtn fallback",
+    "samples": "17024",
+    "damp": "1.00000",
+    "time": "6.121",
+    "fwd_time": "0.543",
+    "(v)ram": "cuda 28.G, 4.92G"
+}
+{
+    "process": "gptq",
+    "layer": 0,
+    "module": "mlp.up_proj",
+    "feat: in, out": "5120, 32768",
+    "dtype: size": "bf16: 330.0MB",
+    "loss": "rtn fallback",
+    "samples": "17024",
+    "damp": "1.00000",
+    "time": "6.289",
+    "fwd_time": "0.543",
+    "(v)ram": "cuda 28.G, 4.92G"
+}
