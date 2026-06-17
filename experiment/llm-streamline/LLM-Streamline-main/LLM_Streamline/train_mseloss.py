@@ -123,5 +123,5 @@ def run():
     pruned_model = AutoModelForCausalLM.from_config(config)
     pruned_model = replace_lightweight_network(model, lightweight_network, pruned_model, best_layer, training_args.layer_intervals+1, args.model_name, config.num_hidden_layers+training_args.layer_intervals)
     
-    pruned_model.save_pretrained('{}-llm-streamline-mseloss'.format(args.model_name))
+    pruned_model.save_pretrained(training_args.output_dir)      # FIX: Set the output directory manually
     

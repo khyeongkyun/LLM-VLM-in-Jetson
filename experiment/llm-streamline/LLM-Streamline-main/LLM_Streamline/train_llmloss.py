@@ -167,7 +167,7 @@ def run():
          
         if valid_loss < best_loss:
             best_loss = valid_loss          
-            pruned_model.module.save_pretrained('{}-llm-streamline-llmloss'.format(args.model_name))
+            pruned_model.module.save_pretrained(training_args.output_dir)        # FIX: Set the output directory manually
             
         print(f"Epoch: {epoch}, Validation Loss:", best_loss)
 
