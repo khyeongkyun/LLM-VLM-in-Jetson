@@ -25,18 +25,18 @@ pip install -r requirements.txt
     The highest cosine similarity comes from hidden_states 2 and hidden_states 11, with a value of 0.9751
     ```
 
-2. `mse_loss_train_without_memory_issue/modeling_*.py` 에서 `BEST_LAYER` 와 `LAST_PRUNED_LAYER` 를 설정
+    [!NOTE] Retraining 에 사용할 Dataset의 Hidden State를 RAM에 저장하기 때문에 Memory Issue가 발생할 가능성이 높습니다. 이 경우, 위에서 얻은 Hidden state layer의 정보를 바탕으로 `replace_with_*_no_memory_issue/train.py` 을 통해 Retraining을 진행하시기 바랍니다.
+
+    Q. 기존 `mseloss_entry.py`과 `replace_with_*_no_memory_issue/train.py`의 차이?
+
+    - Model 기준: Replace 를 진행할 Layer만 로드
+    - Dataset 기준: 모든 Dataset이 아닌 Batch 기반의 Dataset 로드
+
+2. `replace_with_*_no_memory_issue/train.py` 를 통해 Replaced Layer에 대한 Retraining 진행
 
     ```
-    << modeling_opt.py >>
-    ...
-    BEST_LAYER = 2
-    LAST_PRUNED_LAYER = 11
-
+    python train.py --model opt   --start_pruned_layer 3  --last_pruned_layer 11 [--model_name facebook/opt-6.7b] [--data_path <local_dir>]
     ```
 
-3. `train.py` 를 통해 Replaced Layer에 대한 Retraining 진행
+    
 
-    ```
-    python train.py --model opt --model_name facebook/opt-6.7b
-    ```
