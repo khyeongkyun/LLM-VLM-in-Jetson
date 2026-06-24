@@ -14,12 +14,12 @@ from typing import List, Optional, Tuple, Union
 # Run the cosine similarity analysis first (mseloss_entry.py with your OPT model)
 # to find this.  Example: if cosine similarity identifies the (12, 17) pair as
 # most similar, set BEST_LAYER = 12.
-BEST_LAYER = 12
+BEST_LAYER = 2
 
 # 0-indexed position of the last layer that will be pruned.
 # replace_layer is trained to approximate layers [BEST_LAYER+1 … LAST_PRUNED_LAYER].
 # config.num_hidden_layers in train.py is set to LAST_PRUNED_LAYER + 1.
-LAST_PRUNED_LAYER = 16
+LAST_PRUNED_LAYER = 11
 
 
 # ─────────────────────────────────────────────────────────────────────────────

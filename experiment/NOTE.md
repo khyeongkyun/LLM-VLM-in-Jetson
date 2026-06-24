@@ -19,3 +19,11 @@
 
 ## FIX
 Find a comment starts with `FIX:`
+
+## Environment setting
+
+```
+micromamba create -n llm-streamline python=3.10 -y
+micromamba activate llm-streamline
+pip install -r ./llm-streamline/LLM-Streamline-main/requirements.txt
+```

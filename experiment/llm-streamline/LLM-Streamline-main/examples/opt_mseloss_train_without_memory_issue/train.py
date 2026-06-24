@@ -42,7 +42,7 @@ from scheduler import get_cosine_schedule_with_warmup
 # ─────────────────────────────────────────────────────────────────────────────
 # Settings
 # ─────────────────────────────────────────────────────────────────────────────
-OPT_MODEL_NAME = "facebook/opt-1.3b"  # change to opt-2.7b, opt-6.7b, etc.
+OPT_MODEL_NAME = "facebook/opt-6.7b"  # change to opt-2.7b, opt-6.7b, etc.
 TRAIN_DATA_PATH = None                 # local path for load_from_disk, or None to auto-download
 BATCH_SIZE = 32
 GRAD_ACCUM_STEPS = 2
@@ -243,9 +243,9 @@ for epoch in range(EPOCHS):
             if eval_loss < best_eval_loss:
                 best_eval_loss = eval_loss
                 # Uncomment to save the replace_layer state dict:
-                # torch.save(
-                #     accelerator.unwrap_model(model).decoder.replace_layer.state_dict(),
-                #     f"replace_layer_step{global_step}.pt",
-                # )
+                torch.save(
+                    accelerator.unwrap_model(model).decoder.replace_layer.state_dict(),
+                    f"replace_layer_step{global_step}.pt",
+                )
 
             model.train()
