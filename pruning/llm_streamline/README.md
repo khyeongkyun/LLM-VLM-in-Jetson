@@ -25,7 +25,8 @@ pip install -r requirements.txt
     The highest cosine similarity comes from hidden_states 2 and hidden_states 11, with a value of 0.9751
     ```
 
-    [!NOTE] Retraining 에 사용할 Dataset의 Hidden State를 RAM에 저장하기 때문에 Memory Issue가 발생할 가능성이 높습니다. 이 경우, 위에서 얻은 Hidden state layer의 정보를 바탕으로 `replace_with_*_no_memory_issue/train.py` 을 통해 Retraining을 진행하시기 바랍니다.
+    > [!NOTE]
+    > Retraining 에 사용할 Dataset의 Hidden State를 RAM에 저장하기 때문에 Memory Issue가 발생할 가능성이 높습니다. 이 경우, 위에서 얻은 Hidden state layer의 정보를 바탕으로 `replace_with_*_no_memory_issue/train.py` 을 통해 Retraining을 진행하시기 바랍니다.
 
     Q. 기존 `mseloss_entry.py`과 `replace_with_*_no_memory_issue/train.py`의 차이?
 
