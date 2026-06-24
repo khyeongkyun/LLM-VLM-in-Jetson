@@ -2,12 +2,8 @@
 Memory-efficient MSE training for layer pruning — supports LLaMA and OPT.
 
 Usage:
-    python train.py --model llama [--model_name <path_or_hf_id>] [--data_path <local_dir>]
-    python train.py --model opt   [--model_name facebook/opt-6.7b] [--data_path <local_dir>]
-
-Set BEST_LAYER and LAST_PRUNED_LAYER in the respective modeling file before running:
-  - LLaMA: edit modeling_llama.py
-  - OPT:   edit modeling_opt.py
+    python train.py --model llama --start_pruned_layer 19 --last_pruned_layer 29 [--model_name <path_or_hf_id>] [--data_path <local_dir>]
+    python train.py --model opt   --start_pruned_layer 3  --last_pruned_layer 11 [--model_name facebook/opt-6.7b] [--data_path <local_dir>]
 """
 
 import argparse
@@ -46,13 +42,17 @@ parser.add_argument("--weight_decay", type=float, default=1e-3)
 parser.add_argument("--epochs", type=int, default=1)
 parser.add_argument("--eval_every", type=int, default=500,
                     help="Evaluate every N gradient steps.")
+parser.add_argument("--start_pruned_layer", type=int, required=True,
+                    help="0-indexed first layer to prune. The layer just before it (start_pruned_layer-1) feeds and initialises replace_layer.")
+parser.add_argument("--last_pruned_layer", type=int, required=True,
+                    help="0-indexed last layer to prune. replace_layer approximates layers [start_pruned_layer … last_pruned_layer].")
 args = parser.parse_args()
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Model-specific settings
 # ─────────────────────────────────────────────────────────────────────────────
 if args.model == "llama":
-    from modeling_llama import LlamaModel, BEST_LAYER, LAST_PRUNED_LAYER
+    from modeling_llama import LlamaModel
     MODEL_CLASS = LlamaModel
     DEFAULT_MODEL_NAME = "meta-llama/Meta-Llama-3.1-8B"
     LAYER_PARAM_KEYS = [
@@ -65,10 +65,10 @@ if args.model == "llama":
     # LlamaModel (custom) has no such prefix, so pretrained key = "model." + model key.
     PRETRAINED_PREFIX = "model."
     REPLACE_LAYER_DST_PREFIX = "replace_layer."
-    REPLACE_LAYER_SRC_PREFIX = f"model.layers.{BEST_LAYER}."
+    REPLACE_LAYER_SRC_PREFIX = f"model.layers.{args.start_pruned_layer - 1}."
 
 else:  # opt
-    from modeling_opt import CustomOPTModel, BEST_LAYER, LAST_PRUNED_LAYER
+    from modeling_opt import CustomOPTModel
     MODEL_CLASS = CustomOPTModel
     DEFAULT_MODEL_NAME = "facebook/opt-6.7b"
     LAYER_PARAM_KEYS = [
@@ -84,7 +84,7 @@ else:  # opt
     # In OPTForCausalLM, keys are "model.decoder.*"; CustomOPTModel keys are "decoder.*".
     PRETRAINED_PREFIX = "model."
     REPLACE_LAYER_DST_PREFIX = "decoder.replace_layer."
-    REPLACE_LAYER_SRC_PREFIX = f"model.decoder.layers.{BEST_LAYER}."
+    REPLACE_LAYER_SRC_PREFIX = f"model.decoder.layers.{args.start_pruned_layer - 1}."
 
 MODEL_NAME = args.model_name or DEFAULT_MODEL_NAME
 
@@ -103,9 +103,9 @@ config = AutoConfig.from_pretrained(MODEL_NAME)
 tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
 tokenizer.pad_token = tokenizer.eos_token
 
-config.num_hidden_layers = LAST_PRUNED_LAYER + 1
+config.num_hidden_layers = args.last_pruned_layer + 1
 
-model = MODEL_CLASS(config)
+model = MODEL_CLASS(config, start_pruned_layer=args.start_pruned_layer)
 
 print(f"Loading pretrained weights from {MODEL_NAME} ...")
 pretrained = AutoModelForCausalLM.from_pretrained(MODEL_NAME)
@@ -120,8 +120,8 @@ for key in model_dict.keys():
     if pretrained_key in pretrained_dict:
         model_dict[key] = pretrained_dict[pretrained_key]
 
-# Initialise replace_layer from the best layer's pretrained weights
-print(f"Initialising replace_layer from pretrained layer {BEST_LAYER} ...")
+# Initialise replace_layer from the layer just before the pruned range
+print(f"Initialising replace_layer from pretrained layer {args.start_pruned_layer - 1} ...")
 for param in LAYER_PARAM_KEYS:
     src = REPLACE_LAYER_SRC_PREFIX + param
     dst = REPLACE_LAYER_DST_PREFIX + param

@@ -77,8 +77,9 @@ class CustomOPTDecoder(OPTDecoder):
     Returning both through last_hidden_state keeps train.py simple.
     """
 
-    def __init__(self, config: OPTConfig):
+    def __init__(self, config: OPTConfig, start_pruned_layer: int = BEST_LAYER + 1):
         super().__init__(config)
+        self.start_pruned_layer = start_pruned_layer
         self.replace_layer = OPTDecoderLayer(config)
 
     def forward(
@@ -105,7 +106,7 @@ class CustomOPTDecoder(OPTDecoder):
             # This is the MSE target: what replace_layer must learn to approximate.
             captured["last_layer_out"] = out[0]
 
-        h_best = self.layers[BEST_LAYER].register_forward_hook(_hook_best_layer)
+        h_best = self.layers[self.start_pruned_layer - 1].register_forward_hook(_hook_best_layer)
         h_last = self.layers[-1].register_forward_hook(_hook_last_layer)
 
         try:
@@ -155,6 +156,6 @@ class CustomOPTDecoder(OPTDecoder):
 class CustomOPTModel(OPTModel):
     """OPTModel that swaps in CustomOPTDecoder."""
 
-    def __init__(self, config: OPTConfig):
+    def __init__(self, config: OPTConfig, start_pruned_layer: int = BEST_LAYER + 1):
         super().__init__(config)
-        self.decoder = CustomOPTDecoder(config)
+        self.decoder = CustomOPTDecoder(config, start_pruned_layer=start_pruned_layer)
