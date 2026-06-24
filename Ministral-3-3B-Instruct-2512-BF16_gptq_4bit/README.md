@@ -63,6 +63,71 @@
 
 ---
 
+## KMMLU 평가 결과
+
+| 항목 | 값 |
+|---|---|
+| 데이터셋 | KMMLU (45개 과목, test) |
+| Shot | 5-shot |
+| 문항 수 | 35030 |
+| **정확도 (micro)** | **44.19%** |
+| 정확도 (macro, 과목 평균) | 43.42% |
+| 평가 소요 시간 | 62.4 분 |
+
+<details><summary>과목별 정확도</summary>
+
+| 과목 | 정확도 | 문항 수 |
+|---|---:|---:|
+| Accounting | 37.00% | 100 |
+| Agricultural-Sciences | 36.10% | 1000 |
+| Aviation-Engineering-and-Maintenance | 41.50% | 1000 |
+| Biology | 36.90% | 1000 |
+| Chemical-Engineering | 47.30% | 1000 |
+| Chemistry | 48.00% | 600 |
+| Civil-Engineering | 41.50% | 1000 |
+| Computer-Science | 69.20% | 1000 |
+| Construction | 34.40% | 1000 |
+| Criminal-Law | 33.50% | 200 |
+| Ecology | 45.80% | 1000 |
+| Economics | 46.92% | 130 |
+| Education | 58.00% | 100 |
+| Electrical-Engineering | 34.30% | 1000 |
+| Electronics-Engineering | 52.90% | 1000 |
+| Energy-Management | 33.10% | 1000 |
+| Environmental-Science | 30.40% | 1000 |
+| Fashion | 44.60% | 1000 |
+| Food-Processing | 41.90% | 1000 |
+| Gas-Technology-and-Engineering | 36.40% | 1000 |
+| Geomatics | 39.80% | 1000 |
+| Health | 55.00% | 100 |
+| Industrial-Engineer | 40.50% | 1000 |
+| Information-Technology | 64.40% | 1000 |
+| Interior-Architecture-and-Design | 50.80% | 1000 |
+| Law | 42.60% | 1000 |
+| Machine-Design-and-Manufacturing | 42.80% | 1000 |
+| Management | 49.00% | 1000 |
+| Maritime-Engineering | 44.83% | 600 |
+| Marketing | 74.90% | 1000 |
+| Materials-Engineering | 44.80% | 1000 |
+| Mechanical-Engineering | 39.40% | 1000 |
+| Nondestructive-Testing | 45.40% | 1000 |
+| Patent | 32.00% | 100 |
+| Political-Science-and-Sociology | 47.33% | 300 |
+| Psychology | 43.20% | 1000 |
+| Public-Safety | 38.10% | 1000 |
+| Railway-and-Automotive-Engineering | 38.60% | 1000 |
+| Real-Estate | 38.50% | 200 |
+| Refrigerating-Machinery | 32.70% | 1000 |
+| Social-Welfare | 52.60% | 1000 |
+| Taxation | 40.00% | 200 |
+| Telecommunications-and-Wireless-Technology | 55.50% | 1000 |
+| Korean-History | 27.00% | 100 |
+| Math | 24.33% | 300 |
+
+</details>
+
+---
+
 ## 양자화 품질
 
 ### 전체 통계

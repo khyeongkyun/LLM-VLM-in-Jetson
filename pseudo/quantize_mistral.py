@@ -21,6 +21,7 @@ from datetime import datetime
 from datasets import load_dataset
 from huggingface_hub import snapshot_download
 
+from eval_kmmlu import KMMLU_SUBJECTS, evaluate_all
 from gptqmodel import GPTQModel, QuantizeConfig
 
 try:
@@ -90,7 +91,8 @@ def get_calibration(nsamples: int):
 # ── README 생성 ───────────────────────────────────────────────────────────────
 def write_readme(out_dir: str, args, model_path: str, calib_len: int,
                  rows: list[dict], elapsed: float,
-                 ppl_result: dict | None = None):
+                 ppl_result: dict | None = None,
+                 kmmlu_result: dict | None = None):
     import torch
 
     gpu_name = torch.cuda.get_device_name(0) if torch.cuda.is_available() else "CPU"
@@ -192,6 +194,36 @@ def write_readme(out_dir: str, args, model_path: str, calib_len: int,
     else:
         ppl_section = "\n> PPL 평가 생략 (--skip-ppl 옵션 사용)\n\n"
 
+    # ── KMMLU 섹션 ────────────────────────────────────────────────────────────
+    if kmmlu_result:
+        per_subject_rows = "\n".join(
+            f"| {subj} | {r['correct']/r['total']:.2%} | {r['total']} |"
+            for subj, r in kmmlu_result["per_subject"].items()
+        )
+        kmmlu_section = f"""
+## KMMLU 평가 결과
+
+| 항목 | 값 |
+|---|---|
+| 데이터셋 | KMMLU ({len(kmmlu_result["per_subject"])}개 과목, test) |
+| Shot | {kmmlu_result["shots"]}-shot |
+| 문항 수 | {kmmlu_result["n_questions"]} |
+| **정확도 (micro)** | **{kmmlu_result["accuracy"]:.2%}** |
+| 정확도 (macro, 과목 평균) | {kmmlu_result["macro_accuracy"]:.2%} |
+| 평가 소요 시간 | {kmmlu_result["elapsed"]/60:.1f} 분 |
+
+<details><summary>과목별 정확도</summary>
+
+| 과목 | 정확도 | 문항 수 |
+|---|---:|---:|
+{per_subject_rows}
+
+</details>
+
+"""
+    else:
+        kmmlu_section = "\n> KMMLU 평가 생략 (--skip-kmmlu 옵션 사용)\n\n"
+
     # ── worst 5 ───────────────────────────────────────────────────────────────
     worst5 = sorted(rows, key=lambda x: x["loss"], reverse=True)[:5]
     worst_table = "| 레이어 | 모듈 | loss |\n|---|---|---:|\n"
@@ -287,6 +319,7 @@ FOEM(First-Order Error Matters, AAAI 2026)은 기본 GPTQ 가중치 갱신식에
 {algo_section}
 ---
 {ppl_section}---
+{kmmlu_section}---
 
 ## 양자화 품질
 
@@ -487,6 +520,46 @@ def eval_ppl_quantized(out_dir: str, model_path: str, seqlen: int = 2048) -> dic
     }
 
 
+# ── KMMLU 평가 ───────────────────────────────────────────────────────────────
+def eval_kmmlu_quantized(out_dir: str, model_path: str, shots: int = 5) -> dict:
+    """양자화 완료 직후 KMMLU (45개 과목) 정확도를 측정한다.
+
+    eval_ppl_quantized() 와 동일한 패턴: 저장된 out_dir 을 재로드하여 평가.
+    """
+    import time
+
+    import torch
+    from gptqmodel import GPTQModel
+    from transformers import AutoTokenizer
+
+    print(f"[kmmlu] 양자화 모델 로드: {out_dir}")
+    t0 = time.time()
+
+    try:
+        qm = GPTQModel.load(out_dir, attn_implementation="eager")
+    except Exception:
+        print("[kmmlu] 기본 백엔드 실패, gptq_triton 폴백 시도 ...")
+        qm = GPTQModel.load(out_dir, attn_implementation="eager", backend="gptq_triton")
+    hf = getattr(qm, "model", qm)
+    hf.eval()
+
+    try:
+        tok = AutoTokenizer.from_pretrained(model_path)
+    except Exception:
+        tok = AutoTokenizer.from_pretrained(out_dir)
+
+    print(f"[kmmlu] {len(KMMLU_SUBJECTS)}개 과목 평가 시작 ({shots}-shot) ...")
+    result = evaluate_all(hf, tok, KMMLU_SUBJECTS, shots)
+    result["elapsed"] = time.time() - t0
+    print(f"[kmmlu] micro={result['accuracy']:.2%}  macro={result['macro_accuracy']:.2%}  "
+          f"({result['elapsed']/60:.1f} 분)")
+
+    del hf, qm
+    torch.cuda.empty_cache()
+
+    return result
+
+
 def _get_pkg_ver(pkg: str) -> str:
     try:
         import importlib.metadata
@@ -516,6 +589,9 @@ def main():
     ap.add_argument("--skip-ppl", action="store_true", default=False,
                     help="PPL 평가 건너뜀 (시간 절약)")
     ap.add_argument("--ppl-seqlen", type=int, default=2048)
+    ap.add_argument("--skip-kmmlu", action="store_true", default=False,
+                    help="KMMLU 평가 건너뜀 (45개 과목, 시간이 오래 걸림)")
+    ap.add_argument("--kmmlu-shots", type=int, default=5)
     args = ap.parse_args()
 
     base_name = args.model.split("/")[-1]
@@ -562,7 +638,14 @@ def main():
         except Exception as e:
             print(f"[ppl] 평가 실패 (README 에 생략으로 기록): {e}")
 
-    write_readme(out, args, model_path, len(calib), cap.rows, elapsed, ppl_result)
+    kmmlu_result = None
+    if not args.skip_kmmlu:
+        try:
+            kmmlu_result = eval_kmmlu_quantized(out, model_path, shots=args.kmmlu_shots)
+        except Exception as e:
+            print(f"[kmmlu] 평가 실패 (README 에 생략으로 기록): {e}")
+
+    write_readme(out, args, model_path, len(calib), cap.rows, elapsed, ppl_result, kmmlu_result)
 
 
 if __name__ == "__main__":
