@@ -354,8 +354,10 @@ def main():
     bench = {}
     if (RESULTS / "kdtcbench_kocalib.json").exists():
         bench["kocalib"] = json.loads((RESULTS / "kdtcbench_kocalib.json").read_text())
-    if (RESULTS / "kdtcbench_fp16_est.json").exists():
-        bench["fp16"] = json.loads((RESULTS / "kdtcbench_fp16_est.json").read_text())
+    for fp16_name in ("kdtcbench_fp16.json", "kdtcbench_fp16_est.json"):  # full 240 우선
+        if (RESULTS / fp16_name).exists():
+            bench["fp16"] = json.loads((RESULTS / fp16_name).read_text())
+            break
 
     prs = Presentation()
     prs.slide_width = SW
@@ -412,7 +414,7 @@ def main():
 
     # 8. K-DTCBench
     add_image_slide(prs, "결과 ② — K-DTCBench 한국어 VLM 평가", RESULTS / "report_kdtcbench.png",
-                    caption="240문제(문서·표·차트 각 80). 전체 30.4% — 랜덤(25%) 상회. Document 40%로 가장 강함.")
+                    caption="핵심: fp16 원본도 29.2%(≈랜덤 25%) → 낮은 점수는 양자화 손상이 아니라 모델 한계(Llama 3.2 Vision은 영어 전용). 비전 경로는 양쪽 다 fp16 → 양자화 영향 노이즈 수준. (240문제 동일 조건, fp16 vs 한국어캘리브)")
 
     # 7. 종합 대시보드
     add_image_slide(prs, "결과 ③ — 종합 대시보드", RESULTS / "report_summary.png")
@@ -420,15 +422,19 @@ def main():
     # 8. 요약 표 + 결론
     add_table_slide(prs, ppl, bench)
 
+    # 8.5 압축 시도 (3-bit · depth pruning)
+    add_image_slide(prs, "추가 실험 — 8GB 적재를 위한 압축 시도", RESULTS / "report_compression.png",
+                    caption="3-bit·depth pruning 모두 8GB 미달: 크기 병목은 양자화 안 된 fp16 비전 경로(~4.5GB). 8GB 적재는 비전경로 양자화 + 프루닝 LoRA 힐링 + sub-4bit 조합(Phase-2)이라야.")
+
     # 9. 다음 단계
     add_bullet_slide(prs, "다음 단계", [
-        ("fp16 기준선 K-DTCBench 측정 (진행 중)", 0),
-        ("양자화 손상을 한국어 VLM 태스크 정확도로 직접 정량화", 1),
-        ("KOFFVQA 2순위 벤치마크 평가", 0),
-        ("자유서술형 한국어 VQA — gemma-2-9b-it judge 채점", 1),
-        ("Jetson Orin Nano 8GB 실기 배포·벤치마크 (Phase 2)", 0),
-        ("실제 엣지 환경에서의 추론 속도·VRAM·정확도 측정", 1),
-    ], subtitle="양자화 검증 → 한국어 태스크 평가 → 엣지 배포")
+        ("fp16 기준선 K-DTCBench 240문제 측정 완료 — 전 모델 동일 조건 확보", 0),
+        ("결론: 양자화 손상은 노이즈 수준, 낮은 점수는 모델(영어전용) 한계", 1, GREEN),
+        ("8GB Jetson 적재 = Phase-2 (one-shot 3-bit·프루닝으론 불가 실증)", 0),
+        ("비전/cross-attn 양자화(멀티모달 캘리브) + 프루닝 LoRA 힐링 + sub-4bit(AQLM)", 1, BLUE),
+        ("대안: SmolVLM2-2.2B 등 소형 VLM (4-bit ~1.3GB로 8GB 여유)", 1),
+        ("KOFFVQA 2순위 벤치마크 — 자유서술 한국어 VQA, LLM judge 채점", 0),
+    ], subtitle="양자화 검증(완료) → 한국어 태스크 평가 → 엣지 배포(Phase-2)")
 
     out = RESULTS / "report_2026-06-24.pptx"
     prs.save(str(out))

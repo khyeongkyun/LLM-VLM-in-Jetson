@@ -48,8 +48,18 @@ def _resolve_source(mcfg: dict) -> str:
 
 
 def main() -> None:
+    import argparse
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--bits", type=int, default=None, help="config 의 bits 오버라이드 (예: 3)")
+    ap.add_argument("--out-dir", default=None, help="config 의 output_dir 오버라이드")
+    args = ap.parse_args()
+
     cfg = load_config()
     mcfg, qcfg, ccfg = cfg["model"], cfg["quantize"], cfg["calibration"]
+    if args.bits is not None:
+        qcfg["bits"] = args.bits
+    if args.out_dir is not None:
+        qcfg["output_dir"] = args.out_dir
 
     source = _resolve_source(mcfg)
     out_dir = resolve(qcfg["output_dir"])

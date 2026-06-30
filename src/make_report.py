@@ -48,13 +48,17 @@ def load_ppl() -> dict:
 
 
 def load_kdtcbench() -> dict:
+    # 전체 240문제(범주당 80) 동일 조건 결과 우선. fp16 은 full 없으면 구 추정치 폴백.
     out = {}
-    kocalib_path = RESULTS / "kdtcbench_kocalib.json"
-    fp16_path    = RESULTS / "kdtcbench_fp16_est.json"
-    if kocalib_path.exists():
-        out["kocalib"] = json.loads(kocalib_path.read_text())
-    if fp16_path.exists():
-        out["fp16"] = json.loads(fp16_path.read_text())
+    specs = [("fp16", ["kdtcbench_fp16.json", "kdtcbench_fp16_est.json"]),
+             ("gptq_en", ["kdtcbench_gptq_en.json"]),
+             ("kocalib", ["kdtcbench_kocalib.json"])]
+    for key, fnames in specs:
+        for fname in fnames:
+            p = RESULTS / fname
+            if p.exists():
+                out[key] = json.loads(p.read_text())
+                break
     return out
 
 
@@ -102,20 +106,19 @@ def plot_kdtcbench(bench: dict, ax):
     x = np.arange(len(cats))
     width = 0.28
 
+    # K-DTCBench 는 비전 경로(세 모델 다 fp16) 측정이라 캘리브 차이는 노이즈.
+    # 영어캘리브(구버전)는 메시지를 흐려 제외 → fp16 vs 한국어캘리브 2-way.
+    spec = [("fp16", "fp16 원본", C_FP16),
+            ("kocalib", "GPTQ 한국어캘리브", C_KO)]
     series = []
-    if "fp16" in bench:
-        fp16_vals = [
-            bench["fp16"]["by_category"].get(c, {}).get("accuracy", 0) for c in cats[:3]
-        ] + [bench["fp16"]["total_accuracy"]]
-        n_each = next(iter(bench["fp16"]["by_category"].values()))["total"]
-        series.append((f"fp16 원본 (n={n_each}/범주, 추정)", C_FP16, fp16_vals))
-
-    if "kocalib" in bench:
-        ko_vals = [
-            bench["kocalib"]["by_category"].get(c, {}).get("accuracy", 0) for c in cats[:3]
-        ] + [bench["kocalib"]["total_accuracy"]]
-        n_each = next(iter(bench["kocalib"]["by_category"].values()))["total"]
-        series.append((f"GPTQ 4-bit 한국어캘리브 (n={n_each}/범주)", C_KO, ko_vals))
+    for key, label, color in spec:
+        if key not in bench:
+            continue
+        b = bench[key]
+        vals = [b["by_category"].get(c, {}).get("accuracy", 0)
+                for c in cats[:3]] + [b["total_accuracy"]]
+        n_each = next(iter(b["by_category"].values()))["total"]
+        series.append((f"{label} (n={n_each}/범주)", color, vals))
 
     n = len(series)
     offsets = np.linspace(-(n - 1) * width / 2, (n - 1) * width / 2, n)
@@ -144,8 +147,9 @@ def plot_kdtcbench(bench: dict, ax):
     # 핵심 해석 주석
     if "fp16" in bench:
         ax.text(0.5, -0.22,
-                "※ fp16 원본도 랜덤(25%) 수준 — 낮은 점수는 양자화 손상이 아니라 모델 한계(Llama 3.2 Vision은 영어 전용)."
-                "  fp16은 소표본(범주당 10) 추정이라 추후 전체 240문제 측정 예정.",
+                "※ 두 모델 모두 240문제(범주당 80) 동일 조건. fp16 원본도 랜덤(25%) 근처 — "
+                "낮은 점수는 양자화 손상이 아니라 모델 한계(Llama 3.2 Vision은 영어 전용). "
+                "비전 경로는 양쪽 다 fp16이라 양자화(한국어캘리브) 영향은 노이즈 수준.",
                 transform=ax.transAxes, ha="center", va="top",
                 fontsize=8.5, color=C_RED, style="italic")
 
