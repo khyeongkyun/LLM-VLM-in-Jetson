@@ -73,44 +73,7 @@ python src/evaluate.py           # 3. 전/후 비교
 
 ## 실험 결과 (Phase 1)
 
-### 1. 압축 & 무결성
-
-| | fp16 원본 | GPTQ 4bit |
-|---|---|---|
-| 디스크 크기 | 20.6GB | **11.0GB (−47%)** |
-
-![크기 변화 및 11GB 구성](results_quant_summary.png)
-![무결성 검증](results_integrity.png)
-
-컴포넌트별로 보면 self-attn 32층(3.63GB)만 4bit화됐고, 나머지 절반(비전 타워·cross-attn MLP·임베딩·lm_head, 약 7.4GB)은 GPTQModel의 mllama 지원이 텍스트 레이어 한정이라 **fp16 그대로 남음** — 이 부분이 나중에 Jetson 8GB 적재의 발목을 잡는다(아래 4번 참고).
-
-무결성 검증(빨간 사각형 이미지 + "무슨 도형/색?" 질문)은 PASS — 비전 타워·cross-attention·4bit 디코더가 정상 동작함을 한 번에 확인.
-
-### 2. PPL 비교 — 캘리브레이션 언어의 영향
-
-![PPL 비교: fp16 vs GPTQ (영어캘리브 vs 한국어캘리브)](results/report_ppl.png)
-
-| | fp16 | GPTQ 영어캘리브 | GPTQ 한국어캘리브 |
-|---|---|---|---|
-| 영어 PPL (WikiText-2) | 8.21 | 8.81 (+7.3%) | 8.74 (+6.4%) |
-| 한국어 PPL (Wikipedia-KO) | 8.57 | 10.25 (+19.6%) | **9.14 (+6.6%)** |
-
-영어 캘리브레이션만 쓰면 한국어 경로가 "안 쓰임"으로 분류돼 더 거칠게 양자화된다(Δ+19.6%). 캘리브를 한국어 위키(70%) + Flickr30k 영어(30%) 혼합으로 바꾸자 한국어 손상도가 영어와 비슷한 수준(+6.6%)까지 균형을 회복.
-
-### 3. K-DTCBench — 한국어 문서/표/차트 VQA (240문제)
-
-![K-DTCBench 정확도](results/report_kdtcbench.png)
-
-| | fp16 원본 | GPTQ 한국어캘리브 |
-|---|---|---|
-| 전체 정확도 | 29.2% | 30.4% |
-| Document | 33.8% | 40.0% |
-| Table | 35.0% | 25.0% |
-| Chart | 18.8% | 26.2% |
-
-둘 다 랜덤(25%) ±6%p 이내 — 점수 차이는 표본 노이즈다. 낮은 점수 자체도 양자화 손상이 아니라 **모델 한계**(Llama 3.2 Vision은 영어 전용이라 한국어 문서 이해가 원래 약함)로 판단. 비전 경로(cross-attn+vision)는 두 모델 다 fp16이라, 텍스트 캘리브가 이 벤치마크 점수에 미치는 영향은 미미하다.
-
-### 4. Jetson 8GB 적재 압축 시도 — 3bit / depth pruning (둘 다 목표 미달)
+### Jetson 8GB 적재 압축 시도 — 3bit / depth pruning (둘 다 목표 미달)
 
 ![압축 시도 결과 — 8GB Jetson 적재 목표 대비 한계](results/report_compression.png)
 
