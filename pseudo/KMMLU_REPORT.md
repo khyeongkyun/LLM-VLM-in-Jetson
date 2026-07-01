@@ -1,16 +1,17 @@
 # Ministral-3-3B KMMLU 평가 비교 보고서
-**GPTQ 4-bit vs FOEM 3-bit (5-shot, KMMLU 45개 과목 전체)**
+**BF16 원본 vs GPTQ 4-bit vs FOEM 3-bit (5-shot, KMMLU 45개 과목 전체)**
 
-작성일: 2026-06-24 · 모델: `mistralai/Ministral-3-3B-Instruct-2512-BF16`
+작성일: 2026-07-01 · 모델: `mistralai/Ministral-3-3B-Instruct-2512-BF16`
 
 ---
 
 ## 1. 목적
 
-기존에는 WikiText-2 perplexity 로만 양자화 품질을 비교했다. PPL은 언어 모델링 손실(다음 토큰 예측력)만 반영하므로, **한국어 도메인 지식·추론 능력**이 양자화로 얼마나 저하되는지는 따로 측정해야 한다. 이를 위해 [KMMLU](https://huggingface.co/datasets/HAERAE-HUB/KMMLU) (Korean MMLU, 45개 과목, test 35,030문항)를 두 양자화 모델에 적용했다.
+WikiText-2 perplexity와 KMMLU 정확도를 세 가지 모델 변형에 걸쳐 비교한다: ① **BF16 원본** (비양자화, 기준선), ② **GPTQ 4-bit**, ③ **FOEM 3-bit** (α=0, β=0.2). 이를 통해 각 양자화 방법이 한국어 도메인 지식·추론 능력을 얼마나 보존/손실시키는지 정량화한다.
 
 | 모델 | 양자화 방법 | 비트 | WikiText-2 PPL |
 |---|---|---|---|
+| `Ministral-3-3B-Instruct-2512-BF16` | 없음 (기준) | BF16 | N/A |
 | `Ministral-3-3B-Instruct-2512-BF16_gptq_4bit` | GPTQ | 4-bit | 8.72 |
 | `Ministral-3-3B-Instruct-2512-BF16_foem_3bit` | FOEM (α=0, β=0.2) | 3-bit | 10.87 |
 
@@ -18,57 +19,112 @@
 
 ## 2. 평가 방법
 
-- **데이터셋**: `HAERAE-HUB/KMMLU` — 단일 "All" config가 없어 45개 과목별 config를 순회하며 누적.
-- **Few-shot**: 5-shot (각 과목 `dev` split 5문항 그대로 사용, KMMLU 공식 벤치마크와 동일 설정).
-- **채점 방식**: generate() 없이 log-likelihood 기반 4지선다 채점 (lm-eval-harness의 MMLU/KMMLU 태스크와 동일한 방식). 5-shot 프롬프트 뒤에 이어지는 위치에서 " A"/" B"/" C"/" D" 토큰의 logit을 비교해 argmax 선택.
-- **구현**: `pseudo/eval_kmmlu.py`, `pseudo/quantize_mistral.py::eval_kmmlu_quantized()`. 기존 PPL 평가(`eval_ppl.py`)와 동일하게 `GPTQModel.load()` → `.model` → `input_ids` 만 forward하는 패턴을 사용해 멀티모달(mistral3) 양자화 래퍼와 충돌 없이 동작.
+- **데이터셋**: `HAERAE-HUB/KMMLU` — 단일 "All" config 없음, 45개 과목별 config 순회 누적.
+- **Few-shot**: 5-shot (각 과목 `dev` split 5문항, KMMLU 공식 벤치마크와 동일 설정).
+- **채점 방식**: log-likelihood 기반 4지선다 (generate() 없음). 5-shot 프롬프트 뒤에서 " A"/" B"/" C"/" D" 토큰의 logit argmax.
+- **구현**: `pseudo/eval_kmmlu.py`. BF16 원본은 `Mistral3ForConditionalGeneration.from_pretrained()` + `tie_weights()` 호출, 양자화 모델은 `GPTQModel.load()` + `.model` 추출 패턴.
 
 ---
 
 ## 3. 전체 결과
 
-| 모델 | 정확도 (micro) | 정확도 (macro, 과목 평균) | 평가 소요 시간 | 문항 수 |
+| 모델 | 정확도 (micro) | 정확도 (macro) | 소요 시간 | 문항 수 |
 |---|---:|---:|---:|---:|
+| **BF16 원본** | **46.88%** | 46.02% | 47.1분 | 35,030 |
 | **GPTQ 4-bit** | **44.19%** | 43.42% | 62.4분 | 35,030 |
 | **FOEM 3-bit** | **35.58%** | 35.03% | 64.9분 | 35,030 |
 | 4지선다 무작위 기준선 | 25.00% | 25.00% | - | - |
 
-- GPTQ 4-bit이 FOEM 3-bit보다 micro 정확도에서 **+8.6%p** 높다. 45개 과목 중 **43개 과목에서 GPTQ가 우세**, 과목 평균 차이는 **+8.4%p**.
-- PPL 비교(8.72 vs 10.87, GPTQ가 더 낮음=더 좋음)와 KMMLU 정확도 비교(GPTQ가 더 높음)가 **같은 방향**을 가리킨다 — 두 지표가 서로를 보강하는 결과. 즉 이 실험 조건(3-bit FOEM vs 4-bit GPTQ)에서는 **비트 수 차이(4-bit vs 3-bit)가 FOEM의 오차 보정 효과를 상회**한 것으로 보인다. FOEM과 GPTQ를 동일 비트(예: 4-bit FOEM vs 4-bit GPTQ)로 비교해야 알고리즘 자체의 우열을 가릴 수 있다.
+**양자화로 인한 정확도 저하 (BF16 대비)**
+
+| 모델 | micro 차이 | macro 차이 |
+|---|---:|---:|
+| GPTQ 4-bit | -2.69%p | -2.60%p |
+| FOEM 3-bit | -11.30%p | -10.99%p |
 
 ---
 
 ## 4. 과목별 분석
 
-### GPTQ가 크게 앞선 과목 (FOEM과의 차이 top 5)
+<details><summary>45개 과목 전체 3-way 비교 표</summary>
 
-| 과목 | GPTQ | FOEM | 차이 | 문항 수 |
+| 과목 | BF16 | GPTQ 4-bit | FOEM 3-bit | 문항 수 |
 |---|---:|---:|---:|---:|
-| Education | 58.00% | 37.00% | +21.0%p | 100 |
-| Health | 55.00% | 37.00% | +18.0%p | 100 |
-| Marketing | 74.90% | 59.90% | +15.0%p | 1,000 |
-| Ecology | 45.80% | 31.40% | +14.4%p | 1,000 |
-| Social-Welfare | 52.60% | 38.60% | +14.0%p | 1,000 |
+| Accounting | 41.0% | 37.0% | 37.0% | 100 |
+| Agricultural-Sciences | 37.7% | 36.1% | 28.0% | 1000 |
+| Aviation-Engineering-and-Maintenance | 44.7% | 41.5% | 35.3% | 1000 |
+| Biology | 38.9% | 36.9% | 28.8% | 1000 |
+| Chemical-Engineering | 49.8% | 47.3% | 37.0% | 1000 |
+| Chemistry | 51.8% | 48.0% | 36.5% | 600 |
+| Civil-Engineering | 44.2% | 41.5% | 31.3% | 1000 |
+| Computer-Science | 72.0% | 69.2% | 54.1% | 1000 |
+| Construction | 36.8% | 34.4% | 32.3% | 1000 |
+| Criminal-Law | 34.0% | 33.5% | 27.5% | 200 |
+| Ecology | 48.7% | 45.8% | 31.4% | 1000 |
+| Economics | 46.9% | 46.9% | 39.2% | 130 |
+| Education | 64.0% | 58.0% | 37.0% | 100 |
+| Electrical-Engineering | 35.3% | 34.3% | 26.4% | 1000 |
+| Electronics-Engineering | 54.5% | 52.9% | 37.9% | 1000 |
+| Energy-Management | 34.0% | 33.1% | 27.5% | 1000 |
+| Environmental-Science | 35.0% | 30.4% | 25.2% | 1000 |
+| Fashion | 46.4% | 44.6% | 35.1% | 1000 |
+| Food-Processing | 43.6% | 41.9% | 34.4% | 1000 |
+| Gas-Technology-and-Engineering | 39.9% | 36.4% | 30.3% | 1000 |
+| Geomatics | 44.5% | 39.8% | 32.6% | 1000 |
+| Health | 64.0% | 55.0% | 37.0% | 100 |
+| Industrial-Engineer | 44.3% | 40.5% | 33.0% | 1000 |
+| Information-Technology | 69.1% | 64.4% | 49.1% | 1000 |
+| Interior-Architecture-and-Design | 53.2% | 50.8% | 41.2% | 1000 |
+| Law | 45.7% | 42.6% | 33.3% | 1000 |
+| Machine-Design-and-Manufacturing | 44.4% | 42.8% | 34.4% | 1000 |
+| Management | 53.9% | 49.0% | 41.6% | 1000 |
+| Maritime-Engineering | 47.0% | 44.8% | 35.2% | 600 |
+| Marketing | 75.4% | 74.9% | 59.9% | 1000 |
+| Materials-Engineering | 48.9% | 44.8% | 35.5% | 1000 |
+| Mechanical-Engineering | 43.0% | 39.4% | 32.1% | 1000 |
+| Nondestructive-Testing | 47.4% | 45.4% | 36.6% | 1000 |
+| Patent | 28.0% | 32.0% | 25.0% | 100 |
+| Political-Science-and-Sociology | 52.0% | 47.3% | 38.0% | 300 |
+| Psychology | 45.5% | 43.2% | 34.6% | 1000 |
+| Public-Safety | 39.8% | 38.1% | 28.9% | 1000 |
+| Railway-and-Automotive-Engineering | 40.5% | 38.6% | 31.9% | 1000 |
+| Real-Estate | 38.5% | 38.5% | 36.5% | 200 |
+| Refrigerating-Machinery | 37.2% | 32.7% | 28.2% | 1000 |
+| Social-Welfare | 55.8% | 52.6% | 38.6% | 1000 |
+| Taxation | 38.0% | 40.0% | 32.5% | 200 |
+| Telecommunications-and-Wireless-Technology | 59.0% | 55.5% | 41.3% | 1000 |
+| Korean-History | 33.0% | 27.0% | 33.0% | 100 |
+| Math | 23.7% | 24.3% | 23.7% | 300 |
 
-### 차이가 가장 작은(또는 FOEM이 앞선) 과목
+</details>
 
-| 과목 | GPTQ | FOEM | 차이 | 문항 수 |
+### BF16 대비 GPTQ가 크게 저하된 과목 (top 5 손실)
+
+| 과목 | BF16 | GPTQ | 차이 | 문항 수 |
 |---|---:|---:|---:|---:|
-| Construction | 34.40% | 32.30% | +2.1%p | 1,000 |
-| Real-Estate | 38.50% | 36.50% | +2.0%p | 200 |
-| Math | 24.33% | 23.67% | +0.7%p | 300 |
-| Accounting | 37.00% | 37.00% | 0.0%p | 100 |
-| **Korean-History** | **27.00%** | **33.00%** | **-6.0%p** | 100 |
+| Health | 64.0% | 55.0% | -9.0%p | 100 |
+| Education | 64.0% | 58.0% | -6.0%p | 100 |
+| Korean-History | 33.0% | 27.0% | -6.0%p | 100 |
+| Management | 53.9% | 49.0% | -4.9%p | 1000 |
+| Geomatics | 44.5% | 39.8% | -4.7%p | 1000 |
 
-- **Korean-History**가 유일하게 FOEM이 GPTQ를 역전한 과목(+6.0%p). 다만 n=100으로 표본이 작아 통계적 노이즈일 가능성이 있다.
-- 두 모델 공통으로 **Math**가 최저권(GPTQ 24.33%, FOEM 23.67%) — 무작위 기준선(25%) 근처로, 산술/대수 추론은 3B 규모 모델 자체의 한계로 보이며 양자화 손실보다 베이스 모델 능력 부족이 주된 원인으로 추정된다.
-- 두 모델 공통으로 **Marketing**이 최고권(74.90% / 59.90%) — 일반 상식형 객관식 문항 비중이 높아 정답 패턴 추론이 쉬운 과목으로 보인다.
+### BF16 대비 FOEM이 크게 저하된 과목 (top 5 손실)
+
+| 과목 | BF16 | FOEM | 차이 | 문항 수 |
+|---|---:|---:|---:|---:|
+| Education | 64.0% | 37.0% | -27.0%p | 100 |
+| Health | 64.0% | 37.0% | -27.0%p | 100 |
+| Information-Technology | 69.1% | 49.1% | -20.0%p | 1000 |
+| Computer-Science | 72.0% | 54.1% | -17.9%p | 1000 |
+| Telecommunications-and-Wireless-Technology | 59.0% | 41.3% | -17.7%p | 1000 |
+
+- BF16이 GPTQ를 앞서는 과목: **40/45개**, BF16이 FOEM을 앞서는 과목: **43/45개**.
 
 ---
 
 ## 5. 실제 질의 / 추론 예시
 
-동일한 5-shot 프롬프트 구성으로 두 모델에 같은 문항(각 과목 test[0])을 질의하고, 모델이 " A"~" D" 중 어디에 가장 높은 확률을 두었는지 비교했다.
+*(이전 보고서의 4개 예시 — GPTQ/FOEM 비교 — 를 유지. 베이스 모델 예측값은 별도 재실행 시 추가 가능.)*
 
 ### 5-1. Korean-History (두 모델 모두 오답, FOEM이 더 근접)
 
@@ -85,8 +141,6 @@
 | GPTQ 4-bit | **B** | 18.8% | 45.2% | 14.7% | 21.3% | ✗ |
 | FOEM 3-bit | **B** | 17.9% | 29.5% | 23.0% | 29.5% | ✗ |
 
-두 모델 모두 정조(규장각·초계문신제)를 영조·순조 시기 정책과 혼동해 오답(B, "대전회통" — 고종 대 편찬)을 골랐다. FOEM은 정답 C에 23.0%를 부여해 GPTQ(14.7%)보다 정답 확신도가 높았지만 최종 선택은 동일하게 틀렸다.
-
 ### 5-2. Math (두 모델 모두 오답)
 
 > **질문**: 함수 f(x)=-x³+2x+3에 대하여 직선 y=-x+k와 곡선 y=f(x)의 그래프가 서로 다른 두 점에서 만나도록 하는 모든 양수 k의 합은?
@@ -98,8 +152,6 @@
 |---|---|---:|---:|---:|---:|---|
 | GPTQ 4-bit | **B** | 12.6% | 34.2% | 26.6% | 26.6% | ✗ |
 | FOEM 3-bit | **D** | 18.6% | 27.0% | 23.8% | 30.6% | ✗ |
-
-수치 계산이 필요한 문항에서는 두 모델 모두 정답에 낮은 확률을 부여하고 4개 선택지에 확률이 비교적 고르게 분산되어 있다 — "추론해서 맞췄다"기보다는 거의 무작위 선택에 가까운 패턴으로, 3B 모델의 산술 추론 한계를 보여준다.
 
 ### 5-3. Computer-Science (두 모델 모두 정답, 고확신)
 
@@ -113,9 +165,7 @@
 | GPTQ 4-bit | **B** | 0.2% | **97.9%** | 1.4% | 0.6% | ✓ |
 | FOEM 3-bit | **B** | 14.5% | **69.3%** | 8.8% | 7.3% | ✓ |
 
-둘 다 정답을 맞췄지만, GPTQ가 훨씬 더 확신을 가지고(97.9% vs 69.3%) 정답을 선택했다. 사실 기반(factoid) 지식 문항에서는 4-bit GPTQ가 분포를 더 선명하게(sharper) 유지하는 경향을 보인다.
-
-### 5-4. Marketing (두 모델 모두 오답이지만 동일 오답 선택, GPTQ가 더 확신)
+### 5-4. Marketing (두 모델 모두 오답, FOEM 과확신)
 
 > **질문**: 표본을 통해서 모집단의 성질을 정확히 추론하기 위하여 고려할 사항으로 중요하지 않은 것은?
 > - A. 모집단 요소들의 동질성 정도  B. 표본의 크기  C. 표본선정 시기  D. 표본조사 예산
@@ -127,23 +177,22 @@
 | GPTQ 4-bit | **D** | 1.6% | 1.8% | 28.4% | 68.2% | ✗ |
 | FOEM 3-bit | **D** | 3.7% | 1.3% | 4.8% | **90.2%** | ✗ |
 
-이 문항은 두 모델 모두 같은 오답(D)을 골랐지만, **GPTQ는 정답(C)에도 28.4%를 분산**해 둔 반면 **FOEM은 오답(D)에 90.2%를 쏠아넣어** 훨씬 더 "확신에 찬 오답"을 만들어냈다. 이는 과목 단위 정확도 차이(74.9% vs 59.9%)와 같은 방향으로, FOEM 3-bit이 일부 문항에서 GPTQ보다 분포가 더 왜곡(overconfident & wrong)될 수 있음을 보여주는 사례다.
-
 ---
 
 ## 6. 결론
 
-1. 이 실험 조건(GPTQ 4-bit vs FOEM 3-bit)에서는 **비트 수 차이가 알고리즘 차이를 압도**해 GPTQ가 KMMLU 전반에서 우세했다(+8.4%p macro). PPL 결과(8.72 vs 10.87)와도 일관된 결론이다.
-2. 두 방법 모두 **Math** 과목은 무작위 기준선 수준으로, 3B 모델 자체의 수리 추론 한계가 양자화 손실보다 더 크게 작용하는 것으로 보인다.
-3. **Korean-History**처럼 일부 과목에서는 FOEM이 GPTQ를 역전했으나(n=100, 노이즈 가능성), 그 외 43/45 과목에서는 GPTQ가 우세해 일반적인 경향으로 보기는 어렵다.
-4. FOEM 3-bit은 오답을 선택할 때 더 높은 확신도로 틀리는(overconfident wrong) 경향이 일부 문항(Marketing 예시)에서 관찰되었다 — 단일 사례이므로 일반화하려면 더 많은 문항에 대한 calibration 분석이 필요하다.
-5. **공정한 알고리즘 비교를 위한 후속 실험 제안**: FOEM과 GPTQ를 동일 비트(4-bit vs 4-bit, 3-bit vs 3-bit)로 맞춰 재평가하면 비트 수 효과를 제거하고 FOEM의 오차 보정(β 항) 자체의 효과만 분리해 볼 수 있다.
+1. **BF16 원본(46.88%)이 기준선**이며, GPTQ 4-bit는 -2.69%p, FOEM 3-bit는 -11.30%p 차이를 보인다. 비트 수가 더 낮은 FOEM 3-bit의 손실이 더 크며, 이는 PPL 결과(8.72 vs 10.87)와 같은 방향이다.
+2. **GPTQ vs FOEM 알고리즘 비교**: GPTQ 4-bit가 FOEM 3-bit보다 micro +8.61%p 높지만, 이는 알고리즘 차이가 아닌 **비트 수 차이(4 vs 3)**가 주된 원인일 가능성이 높다. 공정한 비교를 위해 동일 비트(4-bit FOEM vs 4-bit GPTQ, 3-bit FOEM vs 3-bit GPTQ) 실험이 필요하다.
+3. **Math 과목**은 세 모델 모두 무작위 기준선(25%) 수준으로, 양자화 손실보다 **3B 베이스 모델의 수리 추론 한계**가 더 크게 작용한다.
+4. **Korean-History**는 BF16 원본에서도 낮을 가능성이 있으며, FOEM 3-bit가 GPTQ 4-bit를 역전하는 특이한 패턴이 유지되는지 확인할 수 있다 (n=100으로 노이즈 가능성 있음).
+5. **후속 실험 제안**: ① 동일 비트 FOEM vs GPTQ 비교; ② Math 과목을 위한 chain-of-thought 프롬프트 실험; ③ Calibration curve (confidence vs accuracy) 분석으로 과확신(overconfident) 오답 패턴 정량화.
 
 ---
 
 ## 7. 산출물
 
-- `Ministral-3-3B-Instruct-2512-BF16_gptq_4bit/README.md` — `## KMMLU 평가 결과` 섹션 추가됨 (과목별 표 포함).
+- `Ministral-3-3B-Instruct-2512-BF16_gptq_4bit/README.md` — `## KMMLU 평가 결과` 섹션 포함.
 - `Ministral-3-3B-Instruct-2512-BF16_foem_3bit/README.md` — 동일.
-- `pseudo/eval_kmmlu.py` — 독립 실행형 KMMLU 평가 스크립트.
-- `pseudo/quantize_mistral.py` — `eval_kmmlu_quantized()` 통합, 양자화 직후 자동 평가 + README 자동 반영 (`--skip-kmmlu`로 끌 수 있음).
+- `pseudo/eval_kmmlu.py` — 독립 실행형 KMMLU 평가 스크립트 (BF16 원본 및 양자화 모델 모두 지원).
+- `pseudo/quantize_mistral.py` — `eval_kmmlu_quantized()` 통합.
+- `pseudo/KMMLU_REPORT.md` — 이 파일 (3-way 비교, 베이스 모델 포함).

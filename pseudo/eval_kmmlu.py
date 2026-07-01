@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env -S python -u
 """KMMLU (Korean MMLU) 정확도 평가 (양자화 모델 vs fp16 원본).
 
 eval_ppl.py 와 동일한 이유로 lm-eval 대신 log-likelihood 기반 4지선다 채점을
@@ -53,14 +53,14 @@ def load_model(path: str, quant: bool):
         from transformers import AutoConfig
         p = snapshot_download(path, local_files_only=True) if "/" in path and not os.path.isdir(path) else path
         cfg = AutoConfig.from_pretrained(p)
-        cfg.tie_word_embeddings = False
-        if hasattr(cfg, "text_config"):
-            cfg.text_config.tie_word_embeddings = False
+        # BF16 베이스 모델은 tie_word_embeddings=True 상태로 저장돼 lm_head.weight가 체크포인트에 없음.
+        # False로 강제하면 lm_head가 랜덤 초기화되므로 원본 설정 그대로 유지.
         import transformers as _t
         cls = getattr(_t, cfg.architectures[0])
         hf = cls.from_pretrained(
             p, config=cfg, dtype=torch.bfloat16, device_map="auto", attn_implementation="sdpa"
         )
+        hf.tie_weights()  # 명시적으로 lm_head ← embed_tokens 결합 확인
         return hf, hf
 
 
