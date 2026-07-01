@@ -93,6 +93,8 @@ def patch_identity(layer):
 
 def main():
     ap = argparse.ArgumentParser()
+    ap.add_argument("--model", choices=["fp16", "gptq"], default="gptq",
+                    help="fp16=원본에 프루닝 먼저(양자화 전), gptq=이미 4bit인 모델에 프루닝")
     ap.add_argument("--quant-dir",
                     default=str(ROOT / "models"
                                / "Llama-3.2-11B-Vision-Instruct-gptq-4bit-kocalib"))
@@ -105,8 +107,8 @@ def main():
     streams = {lang: build_token_stream(tok, lang, args.windows * SEQ_LEN + 4096)
                for lang in ("ko", "en")}
 
-    print(f"[load] gptq {args.quant_dir}", flush=True)
-    model, device = load_model("gptq", Path(args.quant_dir))
+    print(f"[load] {args.model} {args.quant_dir if args.model == 'gptq' else ORIG}", flush=True)
+    model, device = load_model(args.model, Path(args.quant_dir))
     model.config.use_cache = False
     try:
         model.config.text_config.use_cache = False
@@ -130,8 +132,9 @@ def main():
     for k in args.drops:
         to_drop = drop_order[:k]
         originals = {i: patch_identity(layers[i]) for i in to_drop}
-        row = {"k": k, "dropped_layers": sorted(to_drop),
-               "proj_size_gb": round(BASE_GB - GB_PER_LAYER_4BIT * k, 2)}
+        # ponytail: proj_size_gb 산술 환산은 4bit 전제라 fp16 스윕에선 의미 없음 → None
+        proj = round(BASE_GB - GB_PER_LAYER_4BIT * k, 2) if args.model == "gptq" else None
+        row = {"k": k, "dropped_layers": sorted(to_drop), "proj_size_gb": proj}
         for lang in ("ko", "en"):
             sub = streams[lang][:args.windows * SEQ_LEN]
             row[lang] = perplexity(model, sub, device)["ppl"]
@@ -142,9 +145,11 @@ def main():
               f"~{row['proj_size_gb']}GB", flush=True)
         sweep.append(row)
 
-    out = ROOT / "results" / "pruning_sweep.json"
+    tag = "" if args.model == "gptq" else f"_{args.model}"
+    out = ROOT / "results" / f"pruning_sweep{tag}.json"
     out.write_text(json.dumps({
-        "quant_dir": args.quant_dir,
+        "model": args.model,
+        "quant_dir": args.quant_dir if args.model == "gptq" else str(ORIG),
         "block_influence": {str(i): round(bi[i], 5) for i in range(len(layers))},
         "drop_order_self_attn": drop_order,
         "sweep": sweep,
