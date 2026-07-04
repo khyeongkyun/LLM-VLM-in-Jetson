@@ -26,9 +26,14 @@ from datasets import load_dataset
 
 from config import load_config, hf_token, resolve
 from benchmark import load_model
+from prune_depth_sweep import get_decoder_layers, patch_identity
 
 ROOT = Path(__file__).resolve().parent.parent
 ORIG = ROOT / "models" / "Llama-3.2-11B-Vision-Instruct"
+DROP_ORDER_SELF_ATTN = [
+    31, 30, 34, 32, 29, 27, 35, 25, 26, 36, 24, 22, 21, 14, 20, 12,
+    16, 37, 19, 15, 17, 11, 10, 9, 7, 4, 6, 2, 5, 1, 39, 0,
+]
 
 
 _PROMPT_TMPL = """\
@@ -75,6 +80,26 @@ def _model_device(model) -> torch.device:
         return next(model.parameters()).device
     except StopIteration:
         return torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+
+def resolve_drop_layers(prune_k: int) -> list[int]:
+    if prune_k < 0 or prune_k > len(DROP_ORDER_SELF_ATTN):
+        raise ValueError(f"prune_k must be between 0 and {len(DROP_ORDER_SELF_ATTN)}")
+    return DROP_ORDER_SELF_ATTN[:prune_k]
+
+
+def default_out_tag(model: str, prune_k: int) -> str:
+    return f"{model}_prune_k{prune_k}" if prune_k else model
+
+
+def apply_depth_pruning(model, prune_k: int) -> list[int]:
+    drop_layers = resolve_drop_layers(prune_k)
+    if not drop_layers:
+        return []
+    layers = get_decoder_layers(model)
+    for idx in drop_layers:
+        patch_identity(layers[idx])
+    return drop_layers
 
 
 def run_eval(model, processor, num_samples: int | None = None,
@@ -167,6 +192,8 @@ def main() -> None:
                     help="평가 샘플 수 제한 (앞에서부터, None=전체 240)")
     ap.add_argument("--per-category", type=int, default=None,
                     help="카테고리별 N개씩 균등 추출 (공정한 기준선용)")
+    ap.add_argument("--prune-k", type=int, default=0,
+                    help="Block Influence 순서대로 self-attn K층을 identity passthrough 처리")
     ap.add_argument("--out-tag", default="", help="결과 파일명 접미사")
     args = ap.parse_args()
 
@@ -178,14 +205,33 @@ def main() -> None:
     model, processor = load_model(kind, path, token=token)
     print("[load] OK", flush=True)
 
+    # ponytail: patch_identity 는 KV캐시 갱신을 안 해서 generate()의 use_cache=True 와
+    # 충돌한다(prune_depth_sweep.py 가 이미 겪고 끈 문제와 동일) — 프루닝 유무와 무관하게 끈다.
+    model.config.use_cache = False
+    try:
+        model.config.text_config.use_cache = False
+    except AttributeError:
+        pass
+
+    dropped_layers = apply_depth_pruning(model, args.prune_k)
+    if dropped_layers:
+        print(f"[prune] k={args.prune_k} dropped_layers={dropped_layers}", flush=True)
+
     print("[eval] K-DTCBench 평가 시작…", flush=True)
     results = run_eval(model, processor, args.num_samples, args.per_category)
 
-    suffix = f"_{args.out_tag}" if args.out_tag else f"_{args.model}"
+    tag = args.out_tag if args.out_tag else default_out_tag(args.model, args.prune_k)
+    suffix = f"_{tag}"
     out = ROOT / "results" / f"kdtcbench{suffix}.json"
     out.parent.mkdir(exist_ok=True)
     out.write_text(json.dumps(
-        {"model": args.model, "quant_dir": args.quant_dir, **results},
+        {
+            "model": args.model,
+            "quant_dir": args.quant_dir,
+            "prune_k": args.prune_k,
+            "dropped_layers": dropped_layers,
+            **results,
+        },
         ensure_ascii=False, indent=2
     ), encoding="utf-8")
 

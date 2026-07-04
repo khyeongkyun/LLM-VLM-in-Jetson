@@ -30,6 +30,9 @@ def _build_quant_config(qcfg: dict) -> QuantizeConfig:
         group_size=qcfg["group_size"],
         desc_act=qcfg.get("desc_act", False),
         sym=qcfg.get("sym", True),
+        # lm_head(1.05GB fp16)도 4bit로. gptqmodel 네이티브 지원(기본 False).
+        # Phase-2 스킵레이어 양자화 1단계 — 텍스트 캘리브로 충분(임베딩→로짓 선형층).
+        lm_head=qcfg.get("lm_head", False),
         # meta-shell(turtle) 로더는 transformers 5.x mllama 의 마스크 생성
         # (attention_mask.all() — 실값 필요)과 충돌해 죽는다. RAM 64GB 라
         # 직접 CPU 로드로 충분하므로 디스크 오프로드를 끈다.
@@ -52,6 +55,8 @@ def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--bits", type=int, default=None, help="config 의 bits 오버라이드 (예: 3)")
     ap.add_argument("--out-dir", default=None, help="config 의 output_dir 오버라이드")
+    ap.add_argument("--lm-head", action="store_true",
+                    help="lm_head 도 양자화 (스킵레이어 양자화 1단계, ~0.79GB 절감)")
     args = ap.parse_args()
 
     cfg = load_config()
@@ -60,6 +65,8 @@ def main() -> None:
         qcfg["bits"] = args.bits
     if args.out_dir is not None:
         qcfg["output_dir"] = args.out_dir
+    if args.lm_head:
+        qcfg["lm_head"] = True
 
     source = _resolve_source(mcfg)
     out_dir = resolve(qcfg["output_dir"])
@@ -72,6 +79,13 @@ def main() -> None:
 
     # 1) 모델 로드 (12GB VRAM: GPTQModel 이 레이어 단위로 처리, 나머지는 CPU 오프로드)
     model = GPTQModel.load(source, quant_config)
+
+    # gptqmodel 의 lm_head 경로는 flat LLM 을 가정해 config.tie_word_embeddings 를
+    # 최상위에서 읽지만 mllama 는 text_config 안에 중첩 → 최상위에 미러링해준다.
+    # (Llama-3.2-Vision 은 text_config.tie_word_embeddings=false → lm_head 독립 양자화 OK)
+    if qcfg.get("lm_head") and not hasattr(model.model.config, "tie_word_embeddings"):
+        text_cfg = getattr(model.model.config, "text_config", None)
+        model.model.config.tie_word_embeddings = getattr(text_cfg, "tie_word_embeddings", False)
 
     # 2) 캘리브레이션 데이터 준비
     mode = ccfg.get("mode", "text")
