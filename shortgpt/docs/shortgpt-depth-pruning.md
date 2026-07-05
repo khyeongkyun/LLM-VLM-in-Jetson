@@ -57,13 +57,13 @@ BI_i = 1 - mean_cosine(레이어 입력 hidden, 레이어 출력 hidden)
 
 | 파일 | 역할 |
 |---|---|
-| `compression/scripts/run_depth_prune.py` | 실행 진입점 (yaml → 로드→측정→제거→저장) |
-| `compression/configs/prune_phi4.yaml` | 설정 예시 |
-| `compression/src/prune/depth_prune.py` | **핵심**: `compute_block_influence()` + `prune_depth()` |
-| `compression/src/prune/calibration.py` | 보정 데이터 로드 + 토크나이즈 |
-| `compression/src/prune/report.py` | 결과 리포트 출력 (run script가 import) |
-| `compression/src/common/model_loader.py` | 모델 로딩 (run script가 import) |
-| `compression/src/common/param_stats.py` | 파라미터 카운트 (`depth_prune.py`가 import) |
+| `shortgpt/scripts/run_depth_prune.py` | 실행 진입점 (yaml → 로드→측정→제거→저장) |
+| `shortgpt/configs/prune_phi4.yaml` | 설정 예시 |
+| `shortgpt/src/prune/depth_prune.py` | **핵심**: `compute_block_influence()` + `prune_depth()` |
+| `shortgpt/src/prune/calibration.py` | 보정 데이터 로드 + 토크나이즈 |
+| `shortgpt/src/prune/report.py` | 결과 리포트 출력 (run script가 import) |
+| `shortgpt/src/common/model_loader.py` | 모델 로딩 (run script가 import) |
+| `shortgpt/src/common/param_stats.py` | 파라미터 카운트 (`depth_prune.py`가 import) |
 
 
 ---
@@ -73,7 +73,7 @@ BI_i = 1 - mean_cosine(레이어 입력 hidden, 레이어 출력 hidden)
 **uv**
 
 ```bash
-cd compression
+cd shortgpt
 uv sync                      
 
 # 실행: uv run python scripts/...  또는 .venv/bin/python scripts/...
@@ -82,7 +82,7 @@ uv sync
 **pip**
 
 ```bash
-cd compression
+cd shortgpt
 python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt   
 ```
@@ -91,7 +91,7 @@ pip install -r requirements.txt
 ## 6. 실행 방법
 
 ```bash
-cd compression
+cd shortgpt
 .venv/bin/python scripts/run_depth_prune.py --config configs/prune_phi4.yaml
 # 출력 디렉토리를 바꾸려면:
 .venv/bin/python scripts/run_depth_prune.py --config configs/prune_phi4.yaml --out artifacts/my-pruned

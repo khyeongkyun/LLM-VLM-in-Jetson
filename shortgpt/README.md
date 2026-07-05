@@ -1,10 +1,9 @@
 # Phi-4 경량화 (Jetson Orin Nano 8GB)
 
 Minitron 구조적 프루닝 → distillation → GGUF 양자화 파이프라인.
-설계 문서: `docs/superpowers/specs/2026-06-08-phi4-compression-jetson-design.md`
 
 ## 셋업
-    cd compression && python3.10 -m venv .venv
+    cd shortgpt && python3.10 -m venv .venv
     .venv/bin/pip install -r requirements.txt
 
 ## 테스트
