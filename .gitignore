@@ -1,4 +1,12 @@
+<<<<<<< main
+*.out
+*.err
+__pycache__
+__pruning
+__experiment
+=======
 __pycache__/
 *.pyc
 .DS_Store
 outputs/
+>>>>>>> develop
