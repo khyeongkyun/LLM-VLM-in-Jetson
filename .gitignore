@@ -1,18 +1,7 @@
-# 환경
+# 로컬 환경 (작업물은 gptq/ 내 .gitignore 참조)
 .venv/
 __pycache__/
 *.pyc
 .env
-
-# 모델 / 대용량 산출물
-models/
-*.safetensors
-*.bin
-*.gguf
-hf_cache/
-
-# 로그/결과
-*.log
-logs/
-results/*
-!results/report_*.png
+.claude/
+.agents/
