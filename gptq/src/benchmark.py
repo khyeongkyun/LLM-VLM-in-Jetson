@@ -50,6 +50,24 @@ def load_model(kind: str, path: str, token: str | None = None):
         processor = AutoProcessor.from_pretrained(path, token=token)
         return model, processor
 
+    if kind == "nf4":
+        # SplitQ(2605.19929) Table 13 근거: 비전 인코더도 4bit 양자화해도 성능 유지.
+        # bnb NF4 는 vision/cross-attn 포함 전체 Linear 를 4bit 로 적재 — fp16 비전경로
+        # 병목(~4.5GB) 해소 실험용. GPTQ 와 달리 캘리브레이션 없는 즉석 양자화.
+        from transformers import BitsAndBytesConfig, MllamaForConditionalGeneration
+
+        bnb = BitsAndBytesConfig(
+            load_in_4bit=True,
+            bnb_4bit_quant_type="nf4",
+            bnb_4bit_compute_dtype=torch.bfloat16,
+            bnb_4bit_use_double_quant=True,
+        )
+        model = MllamaForConditionalGeneration.from_pretrained(
+            path, quantization_config=bnb, device_map="auto", token=token
+        )
+        processor = AutoProcessor.from_pretrained(path, token=token)
+        return model, processor
+
     if kind == "smolvlm":
         from transformers import AutoModelForImageTextToText
 
@@ -59,7 +77,7 @@ def load_model(kind: str, path: str, token: str | None = None):
         processor = AutoProcessor.from_pretrained(path, token=token)
         return model, processor
 
-    raise ValueError(f"알 수 없는 kind: {kind!r} (mllama_fp16|gptq|smolvlm)")
+    raise ValueError(f"알 수 없는 kind: {kind!r} (mllama_fp16|gptq|nf4|smolvlm)")
 
 
 def _model_device(model) -> torch.device:

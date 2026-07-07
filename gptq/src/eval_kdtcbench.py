@@ -184,7 +184,7 @@ def run_eval(model, processor, num_samples: int | None = None,
 
 def main() -> None:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--model", choices=["fp16", "gptq"], required=True)
+    ap.add_argument("--model", choices=["fp16", "gptq", "nf4"], required=True)
     ap.add_argument("--quant-dir",
                     default=str(ROOT / "models" / "Llama-3.2-11B-Vision-Instruct-gptq-4bit-kocalib"),
                     help="gptq 모델 경로")
@@ -201,7 +201,7 @@ def main() -> None:
     path = args.quant_dir if args.model == "gptq" else str(ORIG)
 
     print(f"[load] {args.model} 모델 로드 중… ({path})", flush=True)
-    kind = "gptq" if args.model == "gptq" else "mllama_fp16"
+    kind = {"fp16": "mllama_fp16", "gptq": "gptq", "nf4": "nf4"}[args.model]
     model, processor = load_model(kind, path, token=token)
     print("[load] OK", flush=True)
 
