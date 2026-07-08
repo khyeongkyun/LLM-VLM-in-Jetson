@@ -225,3 +225,6 @@ __experiment
 *.pyc
 .DS_Store
 outputs/
+*.safetensors
+*.jinja
+*.log
