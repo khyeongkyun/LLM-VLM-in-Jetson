@@ -15,8 +15,32 @@
 | NF4 + lm_head 4bit + 타일2 | 9.33 (+8.9%) | 32.5% | **6.88GB** |
 
 - GPTQ 캘리브레이션은 **한국어/영어 혼합(70/30)** 데이터를 사용 — 캘리브 데이터의 언어 구성이 한국어 품질에 직접 영향을 준다.
-- GPTQ(GPTQModel)는 mllama의 **텍스트 레이어만** 양자화 → 비전 경로 ~4.5GB가 fp16으로 남아 8GB 미달. **bitsandbytes NF4로 비전 인코더·cross-attn 포함 전체 4bit** 적재 시 캘리브 없이도 GPTQ 동급 품질에 3GB를 더 아낀다 (NF4는 데이터-프리라 언어 편향 자체가 없음).
 - K-DTCBench(240문제) 점수는 전 구성이 랜덤(25%) 부근 노이즈 — 이 모델의 한국어 문서 이해 한계이며, 양자화로 인한 추가 손상은 없다는 것까지만 해석.
+
+## NF4 전체 4bit — 무엇이고 어떻게 적용했나
+
+**왜 필요했나.** GPTQ(GPTQModel)는 mllama에서 **텍스트 레이어만** 양자화할 수 있다. 그래서 GPTQ 4bit 모델도 비전 인코더와 cross-attention(~4.5GB)이 fp16으로 남아 총 ~11GB — Jetson 8GB에 올릴 수 없다. 비전 경로까지 4bit로 줄일 방법이 필요했다.
+
+**NF4란.** NF4(NormalFloat4)는 bitsandbytes 라이브러리의 4bit 포맷(QLoRA 논문에서 도입). 신경망 가중치가 대체로 정규분포를 따른다는 점을 이용해, 정규분포에 맞게 배치한 16개의 대표값으로 가중치를 반올림한다. GPTQ와의 핵심 차이 두 가지:
+
+1. **캘리브레이션이 필요 없다** — GPTQ는 데이터를 흘려보내며 가중치를 보정하지만, NF4는 데이터 없이 즉석 변환. 그래서 캘리브 데이터의 언어 편향 문제 자체가 없다.
+2. **모델 전체에 적용된다** — 텍스트/비전 구분 없이 모든 Linear 레이어를 4bit로 적재할 수 있다.
+
+**어떻게 적용했나.** 별도 양자화 단계 없이, 모델 로드 시 `BitsAndBytesConfig`를 넘기면 끝이다:
+
+```python
+from transformers import BitsAndBytesConfig, MllamaForConditionalGeneration
+
+bnb = BitsAndBytesConfig(
+    load_in_4bit=True,
+    bnb_4bit_quant_type="nf4",
+    bnb_4bit_compute_dtype=torch.bfloat16,
+    bnb_4bit_use_double_quant=True,   # 양자화 상수까지 한 번 더 압축
+)
+model = MllamaForConditionalGeneration.from_pretrained(path, quantization_config=bnb, device_map="auto")
+```
+
+**결과.** 비전 인코더·cross-attn 포함 전체가 4bit로 적재되어 peak VRAM 11GB → **8.15GB**. 품질은 캘리브 없이도 GPTQ 한국어 캘리브와 동급(위 요약표). 여기에 lm_head 4bit와 타일 축소를 더해 **6.88GB**까지 확인했다(아래 표).
 
 ## 추가 압축 실험 (NF4 기준)
 
@@ -30,14 +54,6 @@ lm_head 4bit 양자화(`nf4_lmhead`)와 이미지 타일 수 축소(`--max-tiles
 - **타일 1은 붕괴**(23.3%, 랜덤 이하) — 문서 읽기 불가, 채택 불가.
 - lm_head 4bit·타일 2는 각각 −2.9pt 수준으로 노이즈 범위 내 = 실질 무해. 속도 보너스 306s→224s.
 - **현실적 최선: `nf4_lmhead` + 타일 2 = 6.88GB.** 최대 압축(타일 1)도 6.66GB로 6.5GB 목표엔 미달 — 나머지 ~0.4GB는 KV캐시/활성값/경량 프루닝 몫.
-
-### 기각된 경로 — sub-4bit / depth pruning
-
-![압축 시도 결과](results/report_compression.png)
-
-- **3bit GPTQ**: 11.0GB → 10.1GB(−0.9GB뿐)에 한국어 PPL +47% — 나쁜 거래.
-- **Depth pruning (ShortGPT, 힐링 없음)**: self-attn 2층 드롭이 한계, 4층부터 사용 불가(PPL 24.9).
-- sub-4bit로 가야 한다면 그때 MBQ식 모달리티-인지 캘리브 구현이 필요 (4bit에선 캘리브 이득이 작아 불필요).
 
 ## 비교 설계
 
