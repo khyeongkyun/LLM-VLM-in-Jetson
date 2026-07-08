@@ -25,7 +25,7 @@ import torch
 from datasets import load_dataset
 
 from config import load_config, hf_token, resolve
-from benchmark import load_model
+from benchmark import load_model, shrink_max_tiles
 from prune_depth_sweep import get_decoder_layers, patch_identity
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -184,7 +184,7 @@ def run_eval(model, processor, num_samples: int | None = None,
 
 def main() -> None:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--model", choices=["fp16", "gptq", "nf4"], required=True)
+    ap.add_argument("--model", choices=["fp16", "gptq", "nf4", "nf4_lmhead"], required=True)
     ap.add_argument("--quant-dir",
                     default=str(ROOT / "models" / "Llama-3.2-11B-Vision-Instruct-gptq-4bit-kocalib"),
                     help="gptq 모델 경로")
@@ -194,6 +194,8 @@ def main() -> None:
                     help="카테고리별 N개씩 균등 추출 (공정한 기준선용)")
     ap.add_argument("--prune-k", type=int, default=0,
                     help="Block Influence 순서대로 self-attn K층을 identity passthrough 처리")
+    ap.add_argument("--max-tiles", type=int, default=0,
+                    help="이미지 타일 수 상한 (기본 0=모델 기본값 4). 비전 활성값 메모리 절감 실험용")
     ap.add_argument("--out-tag", default="", help="결과 파일명 접미사")
     args = ap.parse_args()
 
@@ -201,8 +203,13 @@ def main() -> None:
     path = args.quant_dir if args.model == "gptq" else str(ORIG)
 
     print(f"[load] {args.model} 모델 로드 중… ({path})", flush=True)
-    kind = {"fp16": "mllama_fp16", "gptq": "gptq", "nf4": "nf4"}[args.model]
+    kind = {"fp16": "mllama_fp16", "gptq": "gptq", "nf4": "nf4", "nf4_lmhead": "nf4_lmhead"}[args.model]
     model, processor = load_model(kind, path, token=token)
+    if hasattr(model, "get_memory_footprint"):
+        print(f"[load] weights footprint: {model.get_memory_footprint() / 1e9:.2f}GB", flush=True)
+    if args.max_tiles:
+        shrink_max_tiles(model, processor, args.max_tiles)
+        print(f"[load] max_image_tiles={args.max_tiles}", flush=True)
     print("[load] OK", flush=True)
 
     # ponytail: patch_identity 는 KV캐시 갱신을 안 해서 generate()의 use_cache=True 와
@@ -230,6 +237,7 @@ def main() -> None:
             "quant_dir": args.quant_dir,
             "prune_k": args.prune_k,
             "dropped_layers": dropped_layers,
+            "max_tiles": args.max_tiles or 4,
             **results,
         },
         ensure_ascii=False, indent=2

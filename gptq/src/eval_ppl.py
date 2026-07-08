@@ -85,7 +85,7 @@ def load_model(kind: str, quant_dir: Path = QUANT):
         from gptqmodel import GPTQModel
         m = GPTQModel.load(str(quant_dir), backend="torch")
         return m.model, "cuda"
-    if kind == "nf4":
+    if kind in ("nf4", "nf4_lmhead"):
         # bnb NF4 — vision/cross-attn 포함 전체 4bit (benchmark.py 의 nf4 와 동일 설정)
         from transformers import BitsAndBytesConfig, MllamaForConditionalGeneration
         bnb = BitsAndBytesConfig(
@@ -93,6 +93,7 @@ def load_model(kind: str, quant_dir: Path = QUANT):
             bnb_4bit_quant_type="nf4",
             bnb_4bit_compute_dtype=torch.bfloat16,
             bnb_4bit_use_double_quant=True,
+            llm_int8_skip_modules=[] if kind == "nf4_lmhead" else None,
         )
         m = MllamaForConditionalGeneration.from_pretrained(
             str(ORIG), quantization_config=bnb, device_map="auto"
@@ -110,7 +111,7 @@ def load_model(kind: str, quant_dir: Path = QUANT):
 
 def main() -> None:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--model", choices=["fp16", "gptq", "nf4"], required=True)
+    ap.add_argument("--model", choices=["fp16", "gptq", "nf4", "nf4_lmhead"], required=True)
     ap.add_argument("--quant-dir", default=str(QUANT),
                     help="gptq 모델 경로 (기본: 영어캘리브 ...-gptq-4bit)")
     ap.add_argument("--out-tag", default="",

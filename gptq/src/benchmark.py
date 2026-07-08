@@ -50,10 +50,11 @@ def load_model(kind: str, path: str, token: str | None = None):
         processor = AutoProcessor.from_pretrained(path, token=token)
         return model, processor
 
-    if kind == "nf4":
+    if kind in ("nf4", "nf4_lmhead"):
         # SplitQ(2605.19929) Table 13 근거: 비전 인코더도 4bit 양자화해도 성능 유지.
         # bnb NF4 는 vision/cross-attn 포함 전체 Linear 를 4bit 로 적재 — fp16 비전경로
         # 병목(~4.5GB) 해소 실험용. GPTQ 와 달리 캘리브레이션 없는 즉석 양자화.
+        # nf4_lmhead: 기본 스킵되는 lm_head(bf16 ~1GB)까지 4bit — skip 목록을 비운다.
         from transformers import BitsAndBytesConfig, MllamaForConditionalGeneration
 
         bnb = BitsAndBytesConfig(
@@ -61,6 +62,7 @@ def load_model(kind: str, path: str, token: str | None = None):
             bnb_4bit_quant_type="nf4",
             bnb_4bit_compute_dtype=torch.bfloat16,
             bnb_4bit_use_double_quant=True,
+            llm_int8_skip_modules=[] if kind == "nf4_lmhead" else None,
         )
         model = MllamaForConditionalGeneration.from_pretrained(
             path, quantization_config=bnb, device_map="auto", token=token
@@ -78,6 +80,33 @@ def load_model(kind: str, path: str, token: str | None = None):
         return model, processor
 
     raise ValueError(f"알 수 없는 kind: {kind!r} (mllama_fp16|gptq|nf4|smolvlm)")
+
+
+def shrink_max_tiles(model, processor, n: int) -> None:
+    """mllama 의 이미지 타일 상한을 4→n 으로 줄여 비전 활성값 메모리를 절감.
+
+    프로세서만 바꾸면 안 된다: 타일 위치 임베딩 3개가 4타일 고정 크기라
+    1타일 입력이 브로드캐스트로 4타일이 돼 reshape 이 깨진다. 임베딩 가중치를
+    앞 n개 타일 분량으로 슬라이스하고 각 모듈의 max_num_tiles 를 갱신한다.
+    (타일 임베딩은 양자화 대상이 아니라 bf16 그대로 — 로드 후 수술 안전)
+    """
+    core = getattr(model, "model", model)  # transformers5: ForConditionalGeneration.model 안에 vision_model
+    vm = core.vision_model
+    h = vm.config.hidden_size
+    for m in (vm.pre_tile_positional_embedding, vm.post_tile_positional_embedding):
+        w = m.embedding.weight.data
+        m.embedding.weight.data = w.reshape(w.shape[0], m.max_num_tiles, h)[:, :n].reshape(w.shape[0], n * h)
+        m.max_num_tiles = n
+    g = vm.gated_positional_embedding
+    w = g.tile_embedding.weight.data
+    g.tile_embedding.weight.data = (
+        w.reshape(w.shape[0], g.max_num_tiles, g.num_patches, h)[:, :n].reshape(w.shape[0], -1)
+    )
+    g.max_num_tiles = n
+    vm.max_num_tiles = n
+    core.max_num_tiles = n
+    model.config.vision_config.max_num_tiles = n
+    processor.image_processor.max_image_tiles = n
 
 
 def _model_device(model) -> torch.device:
