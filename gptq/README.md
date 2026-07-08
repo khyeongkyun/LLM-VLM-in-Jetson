@@ -1,10 +1,5 @@
 # Llama 3.2 11B Vision 4bit 경량화 (GPTQ / NF4)
 
-**Llama-3.2-11B-Vision-Instruct**를 4bit로 경량화해 **Jetson Orin Nano(8GB)** 적재를 노리는 프로젝트.
-데스크톱(RTX 3080 Ti 12GB)에서 양자화·품질 검증을 완료했고, Jetson 이식이 다음 단계다.
-
-> 왜 GPTQ인가 (vs AWQ/SpinQuant): [docs/quantization_method_selection.md](docs/quantization_method_selection.md)
-
 ## 핵심 결과 요약
 
 | 구성 | 한국어 PPL (Δ vs fp16) | K-DTCBench | Peak VRAM |
