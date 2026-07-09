@@ -70,6 +70,10 @@ pip install -r requirements.txt
     --output_dir /path/to/directory/
     ```
 
+    - Best model만 HuggingFace Checkpoint 형태로 저장 (`AutoModelForCausalLM.from_pretrained`로 로드 가능)
+    - 단, `--replace mlp`의 경우 대체 레이어가 표준 decoder layer 형태가 아니므로 `modeling_pruned_<model>.py`가 함께 저장 (`trust_remote_code=True`)
+    - 추가로, `opt_prune_from2to9_mlp_eval_log.csv` 파일을 통해 (`global_step`, `eval_loss`, `saved`) 정보 확인가능
+
 # Evaluation
 
 LLM : [KMMLU Benchmark](https://huggingface.co/datasets/HAERAE-HUB/KMMLU)
