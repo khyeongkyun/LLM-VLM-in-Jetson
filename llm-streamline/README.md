@@ -126,7 +126,6 @@ pip install -r requirements.txt
 | 🔁 TF | 0.00% | -<br>(-%) | -<br>(-%) | -<br>(-%) | -<br>(-%) | -<br>(-%) | -<br>(-%) | -<br>(-%) |
 |<br>|||||||||
 
-$\color{green}{\blacktriangle}$
 
 * Llama-2/3 모델의 Benchmark 결과는 저자가 공유한 HuggingFace 모델 ([Llama-2](https://huggingface.co/XiaodongChen/Llama-2-4.7B) / [Llama-3](https://huggingface.co/XiaodongChen/Llama-3.1-5.4B))을 재사용하여 진행하였습니다. 해당 모델은 MSE loss가 아닌, LLM loss (다음 토큰 예측 loss)가 사용되었습니다.
 
