@@ -123,7 +123,7 @@ pip install -r requirements.txt
 |<br>|||||||||
 | **Llama-2-7b-hf  (32):**<br>**5-shot**|  |  |  |  |  |  |  |
 | Dense (-)  |  6.74B   | 12.55 | 18.79          | 16.67 | 25.50 | 18.47  | 19.79
-| 🔁 TF | 0.00% | -<br>(-%) | -<br>(-%) | -<br>(-%) | -<br>(-%) | -<br>(-%) | -<br>(-%) | -<br>(-%) |
+| 🔁 TF | 4.71B<br>($\color{red}{\blacktriangledown}$ 30.03%)  | 8.78<br>($\color{red}{\blacktriangledown}$ 30.04%)  | 25.29<br>($\color{green}{\blacktriangle}$ 34.59%)  | 23.37<br>($\color{green}{\blacktriangle}$ 40.19%)  | 24.48<br>($\color{red}{\blacktriangledown}$ 4.00%)  | 23.05<br>($\color{green}{\blacktriangle}$ 24.80%)  | 24.03<br>($\color{green}{\blacktriangle}$ 21.42%)
 |<br>|||||||||
 
 
