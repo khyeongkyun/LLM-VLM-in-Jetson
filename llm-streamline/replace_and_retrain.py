@@ -230,7 +230,7 @@ if __name__ == "__main__":
             dataset, shuffle=True, collate_fn=data_collator, batch_size=args.batch_size
         )
         eval_dataloader = DataLoader(
-            eval_dataset, shuffle=False, collate_fn=data_collator, batch_size=args.batch_size * 2
+            eval_dataset, shuffle=False, collate_fn=data_collator, batch_size=args.batch_size * 1
         )
 
         # ─────────────────────────────────────────────────────────────────────
@@ -257,11 +257,15 @@ if __name__ == "__main__":
         mse_loss = nn.MSELoss()
         best_eval_loss = float("inf")
         global_step = 0
+        no_improve_evals = 0
+        should_stop = False
 
         # ─────────────────────────────────────────────────────────────────────
         # Training loop
         # ─────────────────────────────────────────────────────────────────────
         for epoch in range(args.epochs):
+            if should_stop:
+                break
             model.train()
             for step, batch in tqdm(enumerate(train_dataloader), desc=f"Epoch {epoch}"):
                 with accelerator.accumulate(model):
@@ -303,6 +307,9 @@ if __name__ == "__main__":
                     is_new_best = eval_loss < best_eval_loss
                     if is_new_best:
                         best_eval_loss = eval_loss
+                        no_improve_evals = 0
+                    else:
+                        no_improve_evals += 1
 
                     if accelerator.is_main_process:
                         print(f"Step {global_step} — eval MSE loss: {eval_loss:.6f}")
@@ -347,4 +354,14 @@ if __name__ == "__main__":
                             replace_best_checkpoint(tmp_dir, final_dir)
                             print(f"New best (eval MSE {eval_loss:.6f}) saved to {final_dir}")
                             del pruned_model
+
+                    if args.patience and no_improve_evals >= args.patience:
+                        if accelerator.is_main_process:
+                            print(
+                                f"No new best eval loss for {no_improve_evals} consecutive evals "
+                                f"— stopping early at step {global_step}."
+                            )
+                        should_stop = True
+                        break
+
                     model.train()

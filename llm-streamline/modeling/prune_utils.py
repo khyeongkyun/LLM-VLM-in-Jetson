@@ -17,8 +17,10 @@ out of the box.
 import os
 import re
 import shutil
+import time
 
 import torch.nn as nn
+from safetensors import SafetensorError
 from transformers import AutoConfig, AutoModelForCausalLM
 
 
@@ -208,14 +210,26 @@ def save_pruned_model(model, tokenizer, output_dir, model_family, replace, repla
     from_pretrained (no trust_remote_code) is NOT enough for this mode,
     since the MLP replacement layer isn't a stock decoder layer.
     """
-    shutil.rmtree(output_dir, ignore_errors=True)
-    os.makedirs(output_dir, exist_ok=True)
+    max_attempts = 3
+    for attempt in range(1, max_attempts + 1):
+        shutil.rmtree(output_dir, ignore_errors=True)
+        os.makedirs(output_dir, exist_ok=True)
 
-    if replace == "mlp":
-        target = _write_remote_code(output_dir, model_family, replace_layer_index)
-        model.config.auto_map = {"AutoModelForCausalLM": target}
+        if replace == "mlp":
+            target = _write_remote_code(output_dir, model_family, replace_layer_index)
+            model.config.auto_map = {"AutoModelForCausalLM": target}
 
-    model.save_pretrained(output_dir)
+        try:
+            model.save_pretrained(output_dir)
+            break
+        except SafetensorError:
+            # Transient I/O errors (e.g. ENOENT from a network filesystem
+            # hiccup mid-write) have been observed here; retry from a freshly
+            # recreated output_dir rather than losing hours of training.
+            if attempt == max_attempts:
+                raise
+            time.sleep(5)
+
     if tokenizer is not None:
         tokenizer.save_pretrained(output_dir)
 
