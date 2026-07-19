@@ -115,7 +115,7 @@ pip install -r requirements.txt
 | Dense (-)  | 6.66B            | 12.4            | 30.11            | 30.13           | 24.16            | 25.69            | 27.58
 | 🔁 None (24) | 5.05B<br>($\color{red}{\blacktriangledown}$ 24.20%)  | 9.4<br>($\color{red}{\blacktriangledown}$ 24.19%) | 20.76<br>($\color{red}{\blacktriangledown}$ 31.05%) | 18.38<br>($\color{red}{\blacktriangledown}$ 39.00%) | 23.19<br>($\color{red}{\blacktriangledown}$ 4.01%) | 14.25<br>($\color{red}{\blacktriangledown}$ 44.53%) | 19.13<br>($\color{red}{\blacktriangledown}$ 30.64%)
 | 🔁 MLP (24+@) | 5.18B<br>($\color{red}{\blacktriangledown}$ 22.18%) | 9.65<br>($\color{red}{\blacktriangledown}$ 22.18%)  | 28.37<br>($\color{red}{\blacktriangledown}$ 5.78%) | 24.64<br>($\color{red}{\blacktriangledown}$ 18.22%) | 25.34<br>($\color{green}{\blacktriangle}$ 4.88%)  | 23.84<br>($\color{red}{\blacktriangledown}$ 7.20%)  | 25.53<br>($\color{red}{\blacktriangledown}$ 7.43%)
-| 🔁 TF (24+1) | 0.00% | -<br>(-%) | -<br>(-%) | -<br>(-%) | -<br>(-%) | -<br>(-%) | -<br>(-%) | -<br>(-%) |
+| 🔁 TF (24+1) | 5.25B<br>($\color{red}{\blacktriangledown}$ 21.17%) | 9.78<br>($\color{red}{\blacktriangledown}$ 21.13%)  | 29.50<br>($\color{red}{\blacktriangledown}$ 2.03%) |  27.33<br>($\color{red}{\blacktriangledown}$ 9.29%) | 25.00<br>($\color{green}{\blacktriangle}$ 3.48%) |  23.72<br>($\color{red}{\blacktriangledown}$ 7.67%)  | 26.41<br>($\color{red}{\blacktriangledown}$ 4.24%)
 |<br>|||||||||
 | **Llama-3.1-8B (32):**<br>**5-shot**|  |  |  |  |  |  |
 | Dense (-)  |  8.03B            | 14.96           | 42.81           | 38.63           | 41.09           | 41.23           | 40.89
