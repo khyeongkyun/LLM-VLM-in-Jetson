@@ -109,38 +109,22 @@ pip install -r requirements.txt
 **Benchmark dataset:** [KMMLU Benchmark](https://huggingface.co/datasets/HAERAE-HUB/KMMLU)
 
 
-| Model (Layers) | NParams | Size(GB) | STEM | Applied Science | HUMSS | Other | Average |
+| Model (Layers) | NParams | Size(GB) | STEM | App.Sci | HUMSS | Other | Avg |
 |:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
-| **OPT-6.7b (32): 1-shot**|  |  |  |  |  |  |  |
+| **OPT-6.7b (32):**<br>**1-shot**|  |  |  |  |  |  |  |
 | Dense (-)  | 6.66B            | 12.4            | 30.11            | 30.13           | 24.16            | 25.69            | 27.58
-| 🔁 None (24) | 5.05B (⬇ 24.20%)  | 9.4 (⬇ 24.19%) | 20.76 (⬇ 31.05%) | 18.38 (⬇ 39.00%) | 23.19 (⬇ 4.01%) | 14.25 (⬇ 44.53%) | 19.13 (⬇ 30.64%)
-| 🔁 MLP (24+@) | 5.18B (⬇ 22.18%) | 9.65 (⬇ 22.18%)  | 28.37 (⬇ 5.78%) | 24.64 (⬇ 18.22%) | 25.34 (⬆ 4.88%)  | 23.84 (⬇ 7.20%)  | 25.53 (⬇ 7.43%)
-| 🔁 TF (24+1) | 0.00% | - (-%) | - (-%) | - (-%) | - (-%) | - (-%) | - (-%) | - (-%) |
-|<br><br>|||||||||
-| **Llama-3.1-8B (32): 5-shot**|  |  |  |  |  |  |
+| 🔁 None (24) | 5.05B<br>(⬇ 24.20%)  | 9.4<br>(⬇ 24.19%) | 20.76<br>(⬇ 31.05%) | 18.38<br>(⬇ 39.00%) | 23.19<br>(⬇ 4.01%) | 14.25<br>(⬇ 44.53%) | 19.13<br>(⬇ 30.64%)
+| 🔁 MLP (24+@) | 5.18B<br>(⬇ 22.18%) | 9.65<br>(⬇ 22.18%)  | 28.37<br>(⬇ 5.78%) | 24.64<br>(⬇ 18.22%) | 25.34<br>(⬆ 4.88%)  | 23.84<br>(⬇ 7.20%)  | 25.53<br>(⬇ 7.43%)
+| 🔁 TF (24+1) | 0.00% | -<br>(-%) | -<br>(-%) | -<br>(-%) | -<br>(-%) | -<br>(-%) | -<br>(-%) | -<br>(-%) |
+|<br>|||||||||
+| **Llama-3.1-8B (32):**<br>**5-shot**|  |  |  |  |  |  |
 | Dense (-)  |  8.03B            | 14.96           | 42.81           | 38.63           | 41.09           | 41.23           | 40.89
-| 🔁 TF | 5.41B (⬇ 32.59%) | 10.08 (⬇ 32.62%) | 44.86 (⬆ 4.79%) | 41.65 (⬆ 7.82%) | 39.01 (⬇ 5.06%) | 44.21 (⬆ 7.23%) | 42.41 (⬆ 3.72%)
-|<br><br>|||||||||
-| **Llama-2-7b-hf  (32): 5-shot**|  |  |  |  |  |  |  |
+| 🔁 TF | 5.41B<br>(⬇ 32.59%) | 10.08<br>(⬇ 32.62%) | 44.86<br>(⬆ 4.79%) | 41.65<br>(⬆ 7.82%) | 39.01<br>(⬇ 5.06%) | 44.21<br>(⬆ 7.23%) | 42.41<br>(⬆ 3.72%)
+|<br>|||||||||
+| **Llama-2-7b-hf  (32):**<br>**5-shot**|  |  |  |  |  |  |  |
 | Dense (-)  |  6.74B   | 12.55 | 18.79          | 16.67 | 25.50 | 18.47  | 19.79
-| 🔁 TF | 0.00% | - (-%) | - (-%) | - (-%) | - (-%) | - (-%) | - (-%) | - (-%) |
-|<br><br>|||||||||
+| 🔁 TF | 0.00% | -<br>(-%) | -<br>(-%) | -<br>(-%) | -<br>(-%) | -<br>(-%) | -<br>(-%) | -<br>(-%) |
+|<br>|||||||||
 
-* Llama-2/3 모델의 Benchmark 결과는 저자가 공유한 HuggingFace 모델 ([Llama-2](https://huggingface.co/XiaodongChen/Llama-2-4.7B) / [Llama-3](https://huggingface.co/XiaodongChen/Llama-3.1-5.4B))을 재사용하여 진행하였습니다. 해당 모델은 MSE loss가 아닌, LLM loss (다음 토큰 예측 에러)가 사용되었습니다.
-
-
-
-
-# Plab 자료실 게시글 초본
-
-## Pruning 결과 공유 | LLM Streamline
-
-ICLR 2025 컨퍼런스에서 Spotlight 되었던 LLM Streamline Pruning 기법 사용결과 공유입니다. 적용된 모델은 OPT모델과 LLama-2/3 모델이며, 한국어 벤치마크 KMMLU를 사용하여 테스트 하였습니다.
-
-
-
-자세한 설명은 해당 [Github Repository](https://github.com/Pseudo-Lab/LLM-VLM-in-Jetson/tree/develop/llm-streamline)를 통해 확인 부탁드립니다.
-
-
-
+* Llama-2/3 모델의 Benchmark 결과는 저자가 공유한 HuggingFace 모델 ([Llama-2](https://huggingface.co/XiaodongChen/Llama-2-4.7B) / [Llama-3](https://huggingface.co/XiaodongChen/Llama-3.1-5.4B))을 재사용하여 진행하였습니다. 해당 모델은 MSE loss가 아닌, LLM loss (다음 토큰 예측 loss)가 사용되었습니다.
 
