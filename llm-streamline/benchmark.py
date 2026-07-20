@@ -193,6 +193,12 @@ if __name__ == "__main__":
     model.eval()
     max_position_embeddings = getattr(model.config, "max_position_embeddings", 2048)
 
+    # Peak VRAM is set by weight loading plus one score_choices batch (4 sequences,
+    # bounded by max_position_embeddings) — it doesn't grow with dataset size, so this
+    # reading stays representative even under --max_examples.
+    if device == "cuda":
+        torch.cuda.reset_peak_memory_stats(device)
+
     num_params = sum(p.numel() for p in model.parameters())
     bytes_per_param = torch.finfo(DTYPE_MAP[args.dtype]).bits // 8
     model_size_gb = num_params * bytes_per_param / (1024 ** 3)
@@ -213,6 +219,8 @@ if __name__ == "__main__":
             dataset = load_dataset("HAERAE-HUB/KMMLU", subject)
             fewshot_prefix = build_fewshot_prefix(dataset["dev"], args.num_fewshot)
             test_rows = dataset["test"]
+            if args.max_examples is not None:
+                test_rows = test_rows.select(range(min(args.max_examples, len(test_rows))))
 
             correct = 0
             truncated_count = 0
@@ -244,13 +252,17 @@ if __name__ == "__main__":
     category_avg = {cat: sum(scores) / len(scores) for cat, scores in per_category.items()}
     overall_avg = sum(info["accuracy"] for info in results.values()) / len(results)
 
+    peak_vram_allocated_gb = torch.cuda.max_memory_allocated(device) / (1024 ** 3) if device == "cuda" else 0.0
+    peak_vram_reserved_gb = torch.cuda.max_memory_reserved(device) / (1024 ** 3) if device == "cuda" else 0.0
+
     write_header = not os.path.exists(summary_csv)
     with open(summary_csv, "a", newline="") as f:
         writer = csv.writer(f)
         if write_header:
             writer.writerow(
                 ["Model", "Replacement", "Params", "Size (GB)",
-                 "STEM", "Applied Science", "HUMSS", "Other", "Average"]
+                 "STEM", "Applied Science", "HUMSS", "Other", "Average",
+                 "Peak VRAM Allocated (GB)", "Peak VRAM Reserved (GB)"]
             )
         writer.writerow(
             [
@@ -263,10 +275,13 @@ if __name__ == "__main__":
                 f"{category_avg['HUMSS']:.4f}",
                 f"{category_avg['Other']:.4f}",
                 f"{overall_avg:.4f}",
+                f"{peak_vram_allocated_gb:.2f}",
+                f"{peak_vram_reserved_gb:.2f}",
             ]
         )
 
     print(f"\nParams: {num_params:,} ({num_params / 1e9:.2f}B)  Size: {model_size_gb:.2f} GB\n"
           f"STEM: {category_avg['STEM']:.4f}  Applied Science: {category_avg['Applied Science']:.4f}  "
-          f"HUMSS: {category_avg['HUMSS']:.4f}  Other: {category_avg['Other']:.4f}  Average: {overall_avg:.4f}")
+          f"HUMSS: {category_avg['HUMSS']:.4f}  Other: {category_avg['Other']:.4f}  Average: {overall_avg:.4f}\n"
+          f"Peak VRAM: {peak_vram_allocated_gb:.2f} GB allocated / {peak_vram_reserved_gb:.2f} GB reserved")
     print(f"Summary appended to {summary_csv}")

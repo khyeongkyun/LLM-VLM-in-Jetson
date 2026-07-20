@@ -134,6 +134,14 @@ class BenchmarkArguments:
         metadata={"help": "Few-shot exemplars drawn from each subject's KMMLU 'dev' split (up to 5 available per subject)."},
     )
 
+    max_examples: Optional[int] = field(
+        default=None,
+        metadata={"help": "Cap test examples scored per subject. Peak VRAM is set by one score_choices "
+                           "batch (4 sequences, bounded by max_position_embeddings), not by dataset size, "
+                           "so a small cap (e.g. 5-10) still yields a representative Peak VRAM reading "
+                           "while running in a fraction of the time of a full accuracy pass."},
+    )
+
     dtype: Literal["bf16", "fp16", "fp32"] = field(
         default="bf16",
         metadata={"help": "torch_dtype used to load the model for inference."},

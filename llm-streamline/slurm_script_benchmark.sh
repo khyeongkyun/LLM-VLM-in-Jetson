@@ -34,7 +34,7 @@ cd /dss/dsshome1/07/di54rur/kim_he/LLM-VLM-in-Jetson/llm-streamline
 # facebook/opt-6.7b for the unpruned baseline) — from_pretrained downloads and
 # caches Hub ids under $HF_HOME automatically, same as the other scripts do.
 
-#   checkpoint dir                 | label                    | replace_type
+  # checkpoint dir                 | label                    | replace_type
 # declare -a RUNS=(
 #   "facebook/opt-6.7b| opt_6.7b| baseline"
 #   "/dss/dsstbyfs02/scratch/07/di54rur/pseudolab/opt-6b-pruned/opt_prune_from2to9_none| opt_prune_from2to9_none| none"
@@ -53,6 +53,7 @@ cd /dss/dsshome1/07/di54rur/kim_he/LLM-VLM-in-Jetson/llm-streamline
 #     --output_dir /dss/dsstbyfs02/scratch/07/di54rur/pseudolab/opt-6b-pruned/benchmark_results
 # done
 
+
 # declare -a RUNS=(
 #   "meta-llama/Llama-2-7b-hf| llama_2_7b| baseline"
 #   "XiaodongChen/Llama-2-4.7B| llama_2_prune_(none)_tf| tf"
@@ -69,7 +70,50 @@ cd /dss/dsshome1/07/di54rur/kim_he/LLM-VLM-in-Jetson/llm-streamline
 #     --output_dir /dss/dsstbyfs02/scratch/07/di54rur/pseudolab/opt-6b-pruned/benchmark_results
 # done
 
+# declare -a RUNS=(
+#   "meta-llama/Llama-3.1-8B| llama_3_8b| baseline"
+#   "XiaodongChen/Llama-3.1-5.4B| llama_3_prune_(none)_tf| tf"
+# )
+
+# for run in "${RUNS[@]}"; do
+#   IFS="|" read -r ckpt_dir label replace_type <<< "$run"
+#   echo "=== Benchmarking ${label} (${replace_type}) : ${ckpt_dir} ==="
+#   python benchmark.py \
+#     --num_fewshot 5 \
+#     --model_name "${ckpt_dir}" \
+#     --model_label "${label}" \
+#     --replace_type "${replace_type}" \
+#     --output_dir /dss/dsstbyfs02/scratch/07/di54rur/pseudolab/opt-6b-pruned/benchmark_results
+# done
+
+
+
+
+# ------------------------------------------
+# VRAM Checking with a few examples
+# ------------------------------------------
 declare -a RUNS=(
+  "facebook/opt-6.7b| opt_6.7b| baseline"
+  "/dss/dsstbyfs02/scratch/07/di54rur/pseudolab/opt-6b-pruned/opt_prune_from2to9_none| opt_prune_from2to9_none| none"
+  "/dss/dsstbyfs02/scratch/07/di54rur/pseudolab/opt-6b-pruned/opt_prune_from2to9_mlp| opt_prune_from2to9_mlp| mlp"
+  "/dss/dsstbyfs02/scratch/07/di54rur/pseudolab/opt-6b-pruned/opt_prune_from2to9_tf| opt_prune_from2to9_tf| tf"
+)
+
+for run in "${RUNS[@]}"; do
+  IFS="|" read -r ckpt_dir label replace_type <<< "$run"
+  echo "=== Benchmarking ${label} (${replace_type}) : ${ckpt_dir} ==="
+  python benchmark.py \
+    --num_fewshot  1 \
+    --max_examples 5 \
+    --model_name "${ckpt_dir}" \
+    --model_label "${label}_vramcheck" \
+    --replace_type "${replace_type}" \
+    --output_dir /dss/dsstbyfs02/scratch/07/di54rur/pseudolab/vram_check_results 
+done
+
+declare -a RUNS=(
+  "meta-llama/Llama-2-7b-hf| llama_2_7b| baseline"
+  "XiaodongChen/Llama-2-4.7B| llama_2_prune_(none)_tf| tf"
   "meta-llama/Llama-3.1-8B| llama_3_8b| baseline"
   "XiaodongChen/Llama-3.1-5.4B| llama_3_prune_(none)_tf| tf"
 )
@@ -78,9 +122,10 @@ for run in "${RUNS[@]}"; do
   IFS="|" read -r ckpt_dir label replace_type <<< "$run"
   echo "=== Benchmarking ${label} (${replace_type}) : ${ckpt_dir} ==="
   python benchmark.py \
-    --num_fewshot 5 \
+    --num_fewshot  5 \
+    --max_examples 5 \
     --model_name "${ckpt_dir}" \
-    --model_label "${label}" \
+    --model_label "${label}_vramcheck" \
     --replace_type "${replace_type}" \
-    --output_dir /dss/dsstbyfs02/scratch/07/di54rur/pseudolab/opt-6b-pruned/benchmark_results
+    --output_dir /dss/dsstbyfs02/scratch/07/di54rur/pseudolab/vram_check_results 
 done

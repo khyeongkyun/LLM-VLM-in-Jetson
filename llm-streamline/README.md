@@ -109,23 +109,23 @@ pip install -r requirements.txt
 **Benchmark dataset:** [KMMLU Benchmark](https://huggingface.co/datasets/HAERAE-HUB/KMMLU)
 
 
-| Model (Layers) | NParams | Size(GB) | STEM | App.Sci | HUMSS | Other | Avg |
-|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
-| **OPT-6.7b (32):**<br>**1-shot**|  |  |  |  |  |  |  |
-| Dense (-)  | 6.66B            | 12.4            | 30.11            | 30.13           | 24.16            | 25.69            | 27.58
-| 🔁 None (24) | 5.05B<br>($\color{red}{\blacktriangledown}$ 24.20%)  | 9.4<br>($\color{red}{\blacktriangledown}$ 24.19%) | 20.76<br>($\color{red}{\blacktriangledown}$ 31.05%) | 18.38<br>($\color{red}{\blacktriangledown}$ 39.00%) | 23.19<br>($\color{red}{\blacktriangledown}$ 4.01%) | 14.25<br>($\color{red}{\blacktriangledown}$ 44.53%) | 19.13<br>($\color{red}{\blacktriangledown}$ 30.64%)
-| 🔁 MLP (24+@) | 5.18B<br>($\color{red}{\blacktriangledown}$ 22.18%) | 9.65<br>($\color{red}{\blacktriangledown}$ 22.18%)  | 28.37<br>($\color{red}{\blacktriangledown}$ 5.78%) | 24.64<br>($\color{red}{\blacktriangledown}$ 18.22%) | 25.34<br>($\color{green}{\blacktriangle}$ 4.88%)  | 23.84<br>($\color{red}{\blacktriangledown}$ 7.20%)  | 25.53<br>($\color{red}{\blacktriangledown}$ 7.43%)
-| 🔁 TF (24+1) | 5.25B<br>($\color{red}{\blacktriangledown}$ 21.17%) | 9.78<br>($\color{red}{\blacktriangledown}$ 21.13%)  | 29.50<br>($\color{red}{\blacktriangledown}$ 2.03%) |  27.33<br>($\color{red}{\blacktriangledown}$ 9.29%) | 25.00<br>($\color{green}{\blacktriangle}$ 3.48%) |  23.72<br>($\color{red}{\blacktriangledown}$ 7.67%)  | 26.41<br>($\color{red}{\blacktriangledown}$ 4.24%)
+| Model (Layers) | NParams | Size(GB) | VRAM(GB) | STEM | App.Sci | HUMSS | Other | Avg |
+|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
+| **OPT-6.7b (32):**<br>**1-shot**|  |  |  |  |  |  |  |  |
+| Dense (-)  | 6.66B            | 12.4            | 18.71           | 30.11            | 30.13           | 24.16            | 25.69            | 27.58
+| 🔁 None (24) | 5.05B<br>($\color{red}{\blacktriangledown}$ 24.20%)  | 9.4<br>($\color{red}{\blacktriangledown}$ 24.19%) | 14.72<br>($\color{red}{\blacktriangledown}$ 21.33%)        | 20.76<br>($\color{red}{\blacktriangledown}$ 31.05%) | 18.38<br>($\color{red}{\blacktriangledown}$ 39.00%) | 23.19<br>($\color{red}{\blacktriangledown}$ 4.01%) | 14.25<br>($\color{red}{\blacktriangledown}$ 44.53%) | 19.13<br>($\color{red}{\blacktriangledown}$ 30.64%)
+| 🔁 MLP (24+@) | 5.18B<br>($\color{red}{\blacktriangledown}$ 22.18%) | 9.65<br>($\color{red}{\blacktriangledown}$ 22.18%)  | 14.97<br>($\color{red}{\blacktriangledown}$ 19.99%)      | 28.37<br>($\color{red}{\blacktriangledown}$ 5.78%) | 24.64<br>($\color{red}{\blacktriangledown}$ 18.22%) | 25.34<br>($\color{green}{\blacktriangle}$ 4.88%)  | 23.84<br>($\color{red}{\blacktriangledown}$ 7.20%)  | 25.53<br>($\color{red}{\blacktriangledown}$ 7.43%)
+| 🔁 TF (24+1) | 5.25B<br>($\color{red}{\blacktriangledown}$ 21.17%) | 9.78<br>($\color{red}{\blacktriangledown}$ 21.13%)  | 15.22<br>($\color{red}{\blacktriangledown}$ 18.65%)       | 29.50<br>($\color{red}{\blacktriangledown}$ 2.03%) |  27.33<br>($\color{red}{\blacktriangledown}$ 9.29%) | 25.00<br>($\color{green}{\blacktriangle}$ 3.48%) |  23.72<br>($\color{red}{\blacktriangledown}$ 7.67%)  | 26.41<br>($\color{red}{\blacktriangledown}$ 4.24%)
 |<br>|||||||||
-| **Llama-3.1-8B (32):**<br>**5-shot**|  |  |  |  |  |  |
-| Dense (-)  |  8.03B            | 14.96           | 42.81           | 38.63           | 41.09           | 41.23           | 40.89
-| 🔁 TF | 5.41B<br>($\color{red}{\blacktriangledown}$ 32.59%) | 10.08<br>($\color{red}{\blacktriangledown}$ 32.62%) | 44.86<br>($\color{green}{\blacktriangle}$ 4.79%) | 41.65<br>($\color{green}{\blacktriangle}$ 7.82%) | 39.01<br>($\color{red}{\blacktriangledown}$ 5.06%) | 44.21<br>($\color{green}{\blacktriangle}$ 7.23%) | 42.41<br>($\color{green}{\blacktriangle}$ 3.72%)
+| **Llama-3.1-8B (32):**<br>**5-shot**|  |  |  |  |  |  |  |
+| Dense (-)  |  8.03B            | 14.96           | 22.26          | 42.81           | 38.63           | 41.09           | 41.23           | 40.89
+| 🔁 TF | 5.41B<br>($\color{red}{\blacktriangledown}$ 32.59%) | 10.08<br>($\color{red}{\blacktriangledown}$ 32.62%) | 17.38<br>($\color{red}{\blacktriangledown}$ 21.92%)          | 44.86<br>($\color{green}{\blacktriangle}$ 4.79%) | 41.65<br>($\color{green}{\blacktriangle}$ 7.82%) | 39.01<br>($\color{red}{\blacktriangledown}$ 5.06%) | 44.21<br>($\color{green}{\blacktriangle}$ 7.23%) | 42.41<br>($\color{green}{\blacktriangle}$ 3.72%)
 |<br>|||||||||
-| **Llama-2-7b-hf  (32):**<br>**5-shot**|  |  |  |  |  |  |  |
-| Dense (-)  |  6.74B   | 12.55 | 18.79          | 16.67 | 25.50 | 18.47  | 19.79
-| 🔁 TF | 4.71B<br>($\color{red}{\blacktriangledown}$ 30.03%)  | 8.78<br>($\color{red}{\blacktriangledown}$ 30.04%)  | 25.29<br>($\color{green}{\blacktriangle}$ 34.59%)  | 23.37<br>($\color{green}{\blacktriangle}$ 40.19%)  | 24.48<br>($\color{red}{\blacktriangledown}$ 4.00%)  | 23.05<br>($\color{green}{\blacktriangle}$ 24.80%)  | 24.03<br>($\color{green}{\blacktriangle}$ 21.42%)
+| **Llama-2-7b-hf  (32):**<br>**5-shot**|  |  |  |  |  |  |  |  |
+| Dense (-)  |  6.74B   | 12.55 | 23.61         | 18.79          | 16.67 | 25.50 | 18.47  | 19.79
+| 🔁 TF | 4.71B<br>($\color{red}{\blacktriangledown}$ 30.03%)  | 8.78<br>($\color{red}{\blacktriangledown}$ 30.04%)  | 17.34<br>($\color{red}{\blacktriangledown}$ 26.56%)         | 25.29<br>($\color{green}{\blacktriangle}$ 34.59%)  | 23.37<br>($\color{green}{\blacktriangle}$ 40.19%)  | 24.48<br>($\color{red}{\blacktriangledown}$ 4.00%)  | 23.05<br>($\color{green}{\blacktriangle}$ 24.80%)  | 24.03<br>($\color{green}{\blacktriangle}$ 21.42%)
 |<br>|||||||||
 
 
 * Llama-2/3 모델의 Benchmark 결과는 저자가 공유한 HuggingFace 모델 ([Llama-2](https://huggingface.co/XiaodongChen/Llama-2-4.7B) / [Llama-3](https://huggingface.co/XiaodongChen/Llama-3.1-5.4B))을 재사용하여 진행하였습니다. 해당 모델은 MSE loss가 아닌, LLM loss (다음 토큰 예측 loss)가 사용되었습니다.
-
+* VRAM은 Benchmark dataset의 각 Subject 별 5개의 샘플을 사용하여 Peak Allocated 값을 `torch.cuda.max_memory_allocated` 함수를 활용하여 측정하였습니다.
